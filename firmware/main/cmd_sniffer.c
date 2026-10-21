@@ -24,6 +24,7 @@
 #include "mqtt.h"
 #include "usb_stream.h"
 #include "bt_stream.h"
+#include "display.h"
 
 #include "cmd_sniffer.h"
 
@@ -82,6 +83,7 @@ static void wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_t type)
     /* prepare packet_info */
     packet_info.seconds = packet->rx_ctrl.timestamp / 1000000U;
     packet_info.microseconds = packet->rx_ctrl.timestamp % 1000000U;
+    packet_info.rssi = packet->rx_ctrl.rssi;
 
 #if CONFIG_SOC_WIFI_HE_SUPPORT
     packet_info.length = packet->rx_ctrl.dump_len;
@@ -112,6 +114,7 @@ static esp_err_t eth_sniffer_cb(esp_eth_handle_t eth_handle, uint8_t *buffer, ui
     packet_info.seconds = tv_now.tv_sec;
     packet_info.microseconds = tv_now.tv_usec;
     packet_info.length = length;
+    packet_info.rssi = 0;
 
     queue_packet(buffer, &packet_info);
 
@@ -141,6 +144,8 @@ static void sniffer_task(void *)
 
         bt_stream_publish_packet(packet_info.payload, (uint16_t)packet_info.length,
                                  packet_info.seconds, packet_info.microseconds);
+
+        display_on_packet(packet_info.payload, packet_info.length, packet_info.rssi);
 
         esp_event_post(SNIFFER_EVENT_BASE, SNIFFER_RECEIVED_PACKET, NULL, 0, 0);
 
@@ -194,6 +199,7 @@ static esp_err_t sniffer_stop()
     if (write_pcap)
         sniff_packet_stop();
 
+    display_set_sniffer(false, channel);
     esp_event_post(SNIFFER_EVENT_BASE, SNIFFER_STOPPED, NULL, 0, 0);
 
 err:
@@ -247,6 +253,7 @@ static esp_err_t sniffer_start()
         ESP_GOTO_ON_ERROR(esp_wifi_set_channel(140, WIFI_SECOND_CHAN_NONE), err_start, TAG, "set channel failed");
         // switch channel (channel, ignored, ignored, ht_mode?)
         phy_change_channel(channel, 1, 0, 0);
+        display_set_sniffer(true, channel);
         ESP_LOGI(TAG, "start WiFi promiscuous ok");
         break;
     case SNIFFER_INTF_ETH:
@@ -468,6 +475,7 @@ void sniffer_pause(void)
     phy_11p_set(0, 0);
     esp_wifi_stop();
     s_paused = true;
+    display_set_sniffer(false, channel);
 }
 
 void sniffer_resume(void)
@@ -482,4 +490,5 @@ void sniffer_resume(void)
     esp_wifi_set_channel(140, WIFI_SECOND_CHAN_NONE);
     phy_change_channel(channel, 1, 0, 0);
     s_paused = false;
+    display_set_sniffer(true, channel);
 }

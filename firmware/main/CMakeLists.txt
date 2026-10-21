@@ -15,6 +15,8 @@ idf_component_register(
         "usb_stream.c"
         "bt_stream.c"
         "wifi_manager.c"
+        "apa102.c"
+        "display.c"
     PRIV_REQUIRES
         app_trace
         app_update
@@ -22,6 +24,9 @@ idf_component_register(
         console
         esp_coex
         esp_driver_usb_serial_jtag
+        esp_driver_gpio
+        esp_driver_spi
+        esp_driver_tsens
         esp_eth
         esp_https_ota
         esp_netif

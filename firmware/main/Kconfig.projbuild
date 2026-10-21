@@ -2,6 +2,82 @@ menu "Example Configuration"
 
     orsource "$IDF_PATH/examples/common_components/env_caps/$IDF_TARGET/Kconfig.env_caps"
 
+    choice BOARD
+        prompt "Target board"
+        default BOARD_WAVESHARE_C5_WIFI6_KIT
+        help
+            Selects board-specific defaults (pins, LED type, display).
+        config BOARD_WAVESHARE_C5_WIFI6_KIT
+            bool "Waveshare ESP32-C5-WIFI6-KIT (original V2X2MAP target)"
+        config BOARD_LILYGO_T_DONGLE_C5
+            bool "LilyGO T-Dongle-C5 (APA102 LED, ST7735 LCD, SD on shared SPI)"
+    endchoice
+
+    choice STATUS_LED_TYPE
+        prompt "Status LED type"
+        default STATUS_LED_APA102 if BOARD_LILYGO_T_DONGLE_C5
+        default STATUS_LED_WS2812
+        config STATUS_LED_WS2812
+            bool "WS2812 (RMT, led_indicator)"
+        config STATUS_LED_APA102
+            bool "APA102 (2-wire, bit-banged)"
+    endchoice
+
+    if STATUS_LED_APA102
+        config APA102_DATA_PIN
+            int "APA102 data (DI) GPIO"
+            default 5
+        config APA102_CLK_PIN
+            int "APA102 clock (CI) GPIO"
+            default 4
+        config APA102_GLOBAL_BRIGHTNESS
+            int "APA102 global brightness (1-31)"
+            range 1 31
+            default 4
+            help
+                The onboard APA102 is very bright; this 5-bit hardware dimmer is applied
+                on top of the 'ledbrightness' setting.
+    endif
+
+    config ENABLE_LCD
+        bool "Enable ST7735 status display (0.96\" 80x160)"
+        default y if BOARD_LILYGO_T_DONGLE_C5
+        default n
+        depends on SNIFFER_SD_SPI_MODE || !ENABLE_SD
+        help
+            Shows frame counters, station count, RSSI and link status on the
+            T-Dongle-C5 LCD. Shares the SPI bus (SCK/MOSI) with the SD card.
+
+    if ENABLE_LCD
+        config LCD_PIN_MOSI
+            int "LCD MOSI GPIO (only used when SD card is disabled)"
+            default 2
+        config LCD_PIN_CLK
+            int "LCD SCK GPIO (only used when SD card is disabled)"
+            default 6
+        config LCD_PIN_CS
+            int "LCD CS GPIO"
+            default 10
+        config LCD_PIN_DC
+            int "LCD DC (RS) GPIO"
+            default 3
+        config LCD_PIN_RST
+            int "LCD RST GPIO"
+            default 1
+        config LCD_PIN_BL
+            int "LCD backlight GPIO (active low)"
+            default 0
+        config LCD_X_OFFSET
+            int "LCD column offset (landscape)"
+            default 1
+        config LCD_Y_OFFSET
+            int "LCD row offset (landscape)"
+            default 26
+        config LCD_BUTTON_PIN
+            int "Button GPIO for display on/off (-1 = none)"
+            default 28
+    endif
+
     config HW_VARIANT
         string "Hardware variant"
         default "custom"
@@ -67,6 +143,7 @@ menu "Example Configuration"
             config SNIFFER_PIN_MOSI
                 int "MOSI GPIO number"
                 range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+                default 2 if BOARD_LILYGO_T_DONGLE_C5
                 default 7
                 help
                     GPIO pin number for SPI MOSI (Master Out Slave In).
@@ -74,6 +151,7 @@ menu "Example Configuration"
             config SNIFFER_PIN_MISO
                 int "MISO GPIO number"
                 range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
+                default 7 if BOARD_LILYGO_T_DONGLE_C5
                 default 2
                 help
                     GPIO pin number for SPI MISO (Master In Slave Out).
@@ -88,6 +166,7 @@ menu "Example Configuration"
             config SNIFFER_PIN_CS
                 int "CS GPIO number"
                 range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+                default 23 if BOARD_LILYGO_T_DONGLE_C5
                 default 27
                 help
                     GPIO pin number for SPI Chip Select.
@@ -135,6 +214,7 @@ menu "Example Configuration"
             Priority of sniffer task.
 
     config LEDSTRIP_PIN
+        depends on STATUS_LED_WS2812
         int "LED strip pin"
         range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
         default 26
@@ -142,6 +222,17 @@ menu "Example Configuration"
             GPIO number where the LED strip is connected
 
     config ENABLE_TEMPERATURE
-        bool "Enable I2C temperature sensor"
+        bool "Enable temperature reporting"
         default y
+
+    choice TEMPERATURE_SOURCE
+        prompt "Temperature source"
+        depends on ENABLE_TEMPERATURE
+        default TEMPERATURE_INTERNAL if BOARD_LILYGO_T_DONGLE_C5
+        default TEMPERATURE_LM75
+        config TEMPERATURE_LM75
+            bool "External LM75 on I2C"
+        config TEMPERATURE_INTERNAL
+            bool "ESP32-C5 internal chip temperature sensor"
+    endchoice
 endmenu

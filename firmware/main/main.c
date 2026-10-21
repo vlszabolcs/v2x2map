@@ -27,6 +27,7 @@
 #include "temperature.h"
 #include "usb_stream.h"
 #include "bt_stream.h"
+#include "display.h"
 #include "wifi_manager.h"
 
 #if CONFIG_SNIFFER_STORE_HISTORY
@@ -146,6 +147,8 @@ void app_main(void)
 #ifdef CONFIG_ENABLE_TEMPERATURE
     temperature_init();
 #endif
+
+    display_init();
 
     /* Register commands */
 #if CONFIG_ENABLE_SD

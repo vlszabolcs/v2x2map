@@ -19,6 +19,7 @@ typedef struct {
     uint32_t length;
     uint32_t seconds;
     uint32_t microseconds;
+    int8_t rssi;            /*!< RSSI in dBm (0 if unknown, e.g. Ethernet) */
 } sniffer_packet_info_t;
 
 /**

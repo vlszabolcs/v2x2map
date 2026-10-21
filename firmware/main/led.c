@@ -8,8 +8,22 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#if CONFIG_STATUS_LED_APA102
+#include "apa102.h"
+/* Same packing as led_indicator's SET_IRGB so the rest of this file is
+ * backend-agnostic. Only index 0 (the activity LED) exists physically. */
+#define SET_IRGB(i, r, g, b) ((((uint32_t)(i) & 0xFF) << 24) | (((uint32_t)(r) & 0xFF) << 16) | \
+                              (((uint32_t)(g) & 0xFF) << 8) | ((uint32_t)(b) & 0xFF))
+#define GET_INDEX(x) (((x) >> 24) & 0xFF)
+#define GET_RED(x)   (((x) >> 16) & 0xFF)
+#define GET_GREEN(x) (((x) >> 8) & 0xFF)
+#define GET_BLUE(x)  ((x) & 0xFF)
+typedef void *led_indicator_handle_t;
+#else
 #include "led_indicator.h"
 #include "led_indicator_strips.h"
+#endif
+#include "display.h"
 
 #include "config.h"
 #include "ethernet.h"
@@ -71,7 +85,13 @@ static void set_led_with_brightness(led_indicator_handle_t handle, uint32_t irgb
     g = ((uint32_t)g) * ((uint32_t)led_brightness) / 255u;
     b = ((uint32_t)b) * ((uint32_t)led_brightness) / 255u;
 
+#if CONFIG_STATUS_LED_APA102
+    (void)handle;
+    if (i == 0)
+        apa102_set(r, g, b);
+#else
     led_indicator_set_rgb(handle, SET_IRGB(i, r, g, b));
+#endif
 }
 
 static void set_eth_led_disconnected(void)
@@ -261,6 +281,7 @@ void led_pulse_usb_tx(void)     { led_pulse(0x00, 0xFF, 0xFF, 40); }
 void led_status_ble_connected(bool c)
 {
     s_ble_connected = c;
+    display_set_ble_connected(c);
     /* Show the transition with a brief signal pulse: cyan = link up,
      * red = link gone, then settle into the new idle background. */
     led_pulse(c ? 0x00 : 0xFF, c ? 0xFF : 0x00, c ? 0xFF : 0x00, 250);
@@ -316,6 +337,10 @@ void led_update(void)
 
 void led_init(void)
 {
+#if CONFIG_STATUS_LED_APA102
+    apa102_init();
+    led_handle = NULL;
+#else
     led_indicator_strips_config_t strips_config = {
         .led_strip_cfg = {
             .strip_gpio_num = CONFIG_LEDSTRIP_PIN,
@@ -331,6 +356,7 @@ void led_init(void)
         .blink_list_num = 0
     };
     ESP_ERROR_CHECK(led_indicator_new_strips_device(&led_config, &strips_config, &led_handle));
+#endif
 
     esp_timer_create_args_t create_args = {
         .callback = cits_led_timer_cb,

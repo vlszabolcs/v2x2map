@@ -46,6 +46,8 @@ The board supports 5.9 GHz IEEE 802.11p out of the box; the firmware drives it a
 - **Amazon without external Antenna:** [Waveshare ESP32-C5-WROOM-1 dev board](https://amzn.to/43qIJ9h) *
 - **AliExpress:** [Waveshare Official Store](https://s.click.aliexpress.com/e/_c3lTQYn5) *
 
+**Alternative board:** the [LilyGO T-Dongle-C5](https://github.com/Xinyuan-LilyGO/T-Dongle-C5) (USB-A stick with 0.96" LCD, APA102 LED, SD slot) is supported too — see [firmware/TDONGLE-C5.md](firmware/TDONGLE-C5.md).
+
 
 
 ---

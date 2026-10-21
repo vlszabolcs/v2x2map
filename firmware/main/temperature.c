@@ -8,15 +8,21 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#if CONFIG_TEMPERATURE_INTERNAL
+#include "driver/temperature_sensor.h"
+#else
 #include "driver/i2c_master.h"
-
 #include "lm75.h"
-
 #define I2C_PORT 0
+#endif
 
 static const char TAG[] = "TEMPERATURE";
 
+#if CONFIG_TEMPERATURE_INTERNAL
+static temperature_sensor_handle_t tsens;
+#else
 static i2c_dev_t dev;
+#endif
 static bool initialized;
 static esp_timer_handle_t timer_handle;
 
@@ -27,11 +33,15 @@ static void temperature_read(void *)
     if (initialized)
     {
         float value;
+#if CONFIG_TEMPERATURE_INTERNAL
+        esp_err_t res = temperature_sensor_get_celsius(tsens, &value);
+#else
         esp_err_t res = lm75_read_temperature(&dev, &value);
+#endif
 
         if (res == ESP_OK)
         {
-            ESP_LOGI(TAG, "temperature: %f", value);
+            ESP_LOGD(TAG, "temperature: %f", value);
             temperature = value;
             return;
         }
@@ -42,6 +52,21 @@ static void temperature_read(void *)
 
 void temperature_init(void)
 {
+#if CONFIG_TEMPERATURE_INTERNAL
+    temperature_sensor_config_t tcfg = TEMPERATURE_SENSOR_CONFIG_DEFAULT(-10, 80);
+    esp_err_t res = temperature_sensor_install(&tcfg, &tsens);
+    if (res != ESP_OK)
+    {
+        ESP_LOGW(TAG, "temperature_sensor_install failed: %s", esp_err_to_name(res));
+        return;
+    }
+    res = temperature_sensor_enable(tsens);
+    if (res != ESP_OK)
+    {
+        ESP_LOGW(TAG, "temperature_sensor_enable failed: %s", esp_err_to_name(res));
+        return;
+    }
+#else
     esp_err_t res = i2cdev_init();
     if (res != ESP_OK)
     {
@@ -63,6 +88,7 @@ void temperature_init(void)
         ESP_LOGW(TAG, "lm75_init failed: %s", esp_err_to_name(res));
         return;
     }
+#endif
 
     esp_timer_create_args_t create_args = {
         .callback = temperature_read,
@@ -85,6 +111,7 @@ void temperature_init(void)
     }
 
     initialized = true;
+    temperature_read(NULL);
 }
 
 float temperature_get(void)
