@@ -1,0 +1,59 @@
+name: Android APK
+
+on:
+  push:
+    paths:
+      - "android/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Build APKs
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug assembleRelease
+
+      - name: Collect APKs
+        run: |
+          mkdir -p ../dist
+          VER=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          cp app/build/outputs/apk/release/app-release.apk ../dist/V2X2MAP-${VER}.apk
+          cp app/build/outputs/apk/debug/app-debug.apk     ../dist/V2X2MAP-${VER}-debug.apk
+          echo "VER=${VER}" >> "$GITHUB_ENV"
+          ls -la ../dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: V2X2MAP-android-${{ env.VER }}
+          path: dist/*.apk
+
+      - name: Publish as release "android-latest"
+        if: github.event_name == 'workflow_dispatch' || github.ref_type == 'branch'
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete android-latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create android-latest dist/*.apk \
+            --target "${GITHUB_SHA}" --prerelease \
+            --title "V2X2MAP Android ${VER} (${GITHUB_REF_NAME})" \
+            --notes "Automatikus build a ${GITHUB_REF_NAME} branchről (${GITHUB_SHA::7}). V2X2MAP-${VER}.apk: telepítéshez ezt töltsd le. A release build a debug kulccsal van aláírva (sideload)."
