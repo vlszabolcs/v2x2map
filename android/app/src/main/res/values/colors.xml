@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Legacy palette (frame rows, dialogs) -->
     <color name="bg">#0E1116</color>
     <color name="bg_panel">#161B22</color>
     <color name="bg_panel_dim">#1B2129</color>
@@ -10,4 +11,23 @@
     <color name="ok">#7EE787</color>
     <color name="warn">#F0883E</color>
     <color name="danger">#DA3633</color>
+
+    <!-- Message-type colours: one fixed colour per type, used on markers,
+         chips and list rows alike. -->
+    <color name="type_cam">#4C9AFF</color>
+    <color name="type_denm">#FF9A4D</color>
+    <color name="type_spatem">#3DDC97</color>
+    <color name="type_mapem">#B48CFF</color>
+
+    <!-- Status -->
+    <color name="status_ok">#3DDC97</color>
+    <color name="status_busy">#FFB020</color>
+    <color name="status_error">#FF5C5C</color>
+    <color name="status_idle">#8A97A5</color>
+
+    <!-- Brand -->
+    <color name="brand_primary">#1F6FD1</color>
+    <color name="brand_on_primary">#FFFFFF</color>
+    <color name="brand_primary_container">#D6E6FF</color>
+    <color name="brand_on_primary_container">#0A2A55</color>
 </resources>

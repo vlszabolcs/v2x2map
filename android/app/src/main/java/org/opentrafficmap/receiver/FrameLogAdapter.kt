@@ -18,7 +18,7 @@ import java.util.Locale
  * Grouped log adapter. One row per station (stationId + msgType). Tapping a row
  * expands it to show the last [FRAME_HISTORY] individual frames.
  *
- * Columns: type icon | station ID | summary | last-seen | distance | lock | chevron
+ * Card: type circle | name + "TYPE · id · count" | key value + distance · age | lock
  *
  * At high packet rates this stays readable because 20 active vehicles → 20 rows,
  * not 300 rows/min. Batch updates via [addFrames] use notifyDataSetChanged() for
@@ -91,7 +91,10 @@ class FrameLogAdapter(
 
     private fun rebuildAndNotify() {
         displayList.clear()
-        stations.values.sortedByDescending { it.lastSeen }.forEach { entry ->
+        stations.values.sortedWith(
+            compareByDescending<StationEntry> { it.msgType == ItsG5Decoder.MsgType.DENM }
+                .thenByDescending { it.lastSeen }
+        ).forEach { entry ->
             displayList.add(entry)
             if (entry.expanded) entry.recentFrames.forEach { displayList.add(it) }
         }
@@ -121,48 +124,46 @@ class FrameLogAdapter(
     // ── station row ──────────────────────────────────────────────────────────
 
     private fun bindStation(vh: StationVH, entry: StationEntry) {
-        // Type icon
-        val iconRes = when (entry.msgType) {
-            ItsG5Decoder.MsgType.CAM    -> R.drawable.ic_marker_car
-            ItsG5Decoder.MsgType.SPATEM -> R.drawable.ic_marker_trafficlight
-            ItsG5Decoder.MsgType.DENM   -> R.drawable.ic_marker_hazard
-            ItsG5Decoder.MsgType.MAPEM  -> R.drawable.ic_marker_intersection
-            else                        -> R.drawable.ic_marker_dot
-        }
+        val ctx   = vh.itemView.context
+        val color = entry.msgType.color
+        val now   = System.currentTimeMillis()
+
+        // Type icon on a tinted circle
+        vh.iconBg.backgroundTintList = ColorStateList.valueOf((color and 0x00FFFFFF) or 0x2E000000)
         vh.icon.setImageDrawable(
-            ContextCompat.getDrawable(vh.itemView.context, iconRes)!!.mutate().also {
-                androidx.core.graphics.drawable.DrawableCompat.setTint(it, entry.msgType.color)
+            ContextCompat.getDrawable(ctx, iconFor(entry.msgType))!!.mutate().also {
+                androidx.core.graphics.drawable.DrawableCompat.setTint(it, color)
             }
         )
 
-        // Station title: type badge + ID
+        val f = entry.recentFrames.firstOrNull()
+        vh.title.text   = titleFor(entry.msgType, f)
         val sid = entry.stationId?.let { "#%08x".format(it.toInt()) } ?: "—"
-        vh.title.text = "${entry.msgType.short}  $sid"
-        vh.title.setTextColor(entry.msgType.color)
+        vh.summary.text = "${entry.msgType.short} · $sid · ${entry.frameCount}×"
 
-        // Summary
-        vh.summary.text = buildSummary(entry)
-
-        // Last-seen time
-        vh.time.text = timeFmt.format(Date(entry.lastSeen))
-
-        // Distance
-        vh.dist.text = formatDistance(entry.lastLatLon, userLocation)
+        // Right column: the one number that matters for this type, then distance · age
+        vh.main.text = mainValueFor(entry.msgType, f)
+        vh.main.setTextColor(
+            if (entry.msgType == ItsG5Decoder.MsgType.SPATEM) phaseColor(f?.spatPhase)
+            else vh.title.currentTextColor
+        )
+        val dist = formatDistance(entry.lastLatLon, userLocation)
+        val age  = formatAge(now - entry.lastSeen)
+        vh.meta.text = if (dist == "—") age else "$dist · $age"
 
         // Lock icon
         val sec = entry.lastSecured
         if (sec == null) {
-            vh.lock.visibility = View.INVISIBLE
+            vh.lock.visibility = View.GONE
         } else {
             vh.lock.visibility = View.VISIBLE
             vh.lock.setImageResource(if (sec) R.drawable.ic_lock_closed else R.drawable.ic_lock_open)
         }
 
-        // Chevron rotation
-        vh.chevron.rotation = if (entry.expanded) 180f else 0f
-
-        // Frame count badge (in summary if no summary text)
-        // Already shown inline via buildSummary
+        // Hazards stand out; stale stations fade
+        val isHazard = entry.msgType == ItsG5Decoder.MsgType.DENM
+        vh.card.strokeColor = if (isHazard) (color and 0x00FFFFFF) or 0x8C000000.toInt() else Color.TRANSPARENT
+        vh.itemView.alpha = if (now - entry.lastSeen > STALE_MS) 0.55f else 1f
 
         vh.itemView.setOnClickListener {
             entry.expanded = !entry.expanded
@@ -170,39 +171,57 @@ class FrameLogAdapter(
         }
     }
 
-    private fun buildSummary(entry: StationEntry): String {
-        val f = entry.recentFrames.firstOrNull()
-        val countStr = "${entry.frameCount}×"
-        val detail = when (entry.msgType) {
-            ItsG5Decoder.MsgType.CAM -> buildString {
-                if (f != null) {
-                    f.speedMps?.takeIf { it > 0.5 }?.let { append("%.0f km/h ".format(it * 3.6)) }
-                    f.headingDeg?.let {
-                        val card = arrayOf("N","NE","E","SE","S","SW","W","NW")
-                        append(card[((it / 45.0 + 0.5).toInt() % 8).coerceIn(0,7)])
-                        append("  ")
-                    }
-                    f.latLon?.let { (lat, lon) -> append("%.4f,%.4f".format(lat, lon)) }
-                }
-            }.trim().ifEmpty { "—" }
-            ItsG5Decoder.MsgType.SPATEM -> when (f?.spatPhase) {
-                SpatTemParser.Phase.RED    -> context.getString(R.string.log_phase_red)
-                SpatTemParser.Phase.YELLOW -> context.getString(R.string.log_phase_yellow)
-                SpatTemParser.Phase.GREEN  -> context.getString(R.string.log_phase_green)
-                else                       -> context.getString(R.string.log_phase_unknown)
-            }
-            ItsG5Decoder.MsgType.DENM  -> {
-                val cause = f?.denmCause
-                if (cause != null) cause.label() + cause.sublabel().let { if (it.isNotEmpty()) " $it" else "" }
-                else context.getString(R.string.log_hazard)
-            }
-            ItsG5Decoder.MsgType.MAPEM -> context.getString(R.string.log_intersection)
-            else -> f?.let { "len=${it.len}" } ?: "—"
-        }
-        return "$countStr  $detail"
+    private fun iconFor(t: ItsG5Decoder.MsgType) = when (t) {
+        ItsG5Decoder.MsgType.CAM    -> R.drawable.ic_marker_car
+        ItsG5Decoder.MsgType.SPATEM -> R.drawable.ic_marker_trafficlight
+        ItsG5Decoder.MsgType.DENM   -> R.drawable.ic_marker_hazard
+        ItsG5Decoder.MsgType.MAPEM  -> R.drawable.ic_marker_intersection
+        else                        -> R.drawable.ic_marker_dot
     }
 
-    private fun formatDistance(latLon: Pair<Double, Double>?, userLoc: Location?): String {
+    /** Human-readable name: vehicle class for CAM, cause for DENM, … */
+    fun titleFor(t: ItsG5Decoder.MsgType, f: Frame?): String = when (t) {
+        ItsG5Decoder.MsgType.CAM -> {
+            val names = context.resources.getStringArray(R.array.station_types)
+            f?.stationType?.takeIf { it in names.indices && it != 0 }?.let { names[it] }
+                ?: context.getString(R.string.label_vehicle)
+        }
+        ItsG5Decoder.MsgType.SPATEM -> context.getString(R.string.label_traffic_light)
+        ItsG5Decoder.MsgType.MAPEM  -> context.getString(R.string.log_intersection)
+        ItsG5Decoder.MsgType.DENM   -> f?.denmCause?.let { c ->
+            c.label() + c.sublabel().let { if (it.isNotEmpty()) " – $it" else "" }
+        } ?: context.getString(R.string.log_hazard)
+        else -> t.short
+    }
+
+    private fun mainValueFor(t: ItsG5Decoder.MsgType, f: Frame?): String = when (t) {
+        ItsG5Decoder.MsgType.CAM -> f?.speedMps?.let { "%.0f km/h".format(it * 3.6) } ?: "—"
+        ItsG5Decoder.MsgType.SPATEM -> phaseLabel(f?.spatPhase)
+        ItsG5Decoder.MsgType.DENM -> formatDistance(f?.latLon, userLocation)
+        else -> ""
+    }
+
+    fun phaseLabel(p: SpatTemParser.Phase?): String = when (p) {
+        SpatTemParser.Phase.RED    -> context.getString(R.string.log_phase_red)
+        SpatTemParser.Phase.YELLOW -> context.getString(R.string.log_phase_yellow)
+        SpatTemParser.Phase.GREEN  -> context.getString(R.string.log_phase_green)
+        else                       -> context.getString(R.string.log_phase_unknown)
+    }
+
+    fun phaseColor(p: SpatTemParser.Phase?): Int = when (p) {
+        SpatTemParser.Phase.RED    -> 0xFFFF5C5C.toInt()
+        SpatTemParser.Phase.YELLOW -> 0xFFFFC93D.toInt()
+        SpatTemParser.Phase.GREEN  -> 0xFF3DDC97.toInt()
+        else                       -> 0xFF8A97A5.toInt()
+    }
+
+    private fun formatAge(ms: Long): String {
+        val s = (ms / 1000).coerceAtLeast(0)
+        return if (s < 120) context.getString(R.string.age_s, s.toInt())
+               else context.getString(R.string.age_m, (s / 60).toInt())
+    }
+
+    fun formatDistance(latLon: Pair<Double, Double>?, userLoc: Location?): String {
         if (latLon == null || userLoc == null) return "—"
         val result = FloatArray(1)
         Location.distanceBetween(userLoc.latitude, userLoc.longitude,
@@ -212,6 +231,19 @@ class FrameLogAdapter(
             result[0] < 10000 -> "%.1f km".format(result[0] / 1000)
             else               -> "%.0f km".format(result[0] / 1000)
         }
+    }
+
+    // ── live stats for the sheet header and filter chips ─────────────────────
+
+    /** Stations heard within [windowMs], per message type. */
+    fun activeCounts(windowMs: Long = ACTIVE_MS): Map<ItsG5Decoder.MsgType, Int> {
+        val cutoff = System.currentTimeMillis() - windowMs
+        return stations.values.filter { it.lastSeen >= cutoff }.groupingBy { it.msgType }.eachCount()
+    }
+
+    /** Re-bind rows so ages stay current without new frames. */
+    fun refreshAges() {
+        if (displayList.isNotEmpty()) rebuildAndNotify()
     }
 
     // ── expanded frame row ───────────────────────────────────────────────────
@@ -233,13 +265,14 @@ class FrameLogAdapter(
     // ── ViewHolder classes ───────────────────────────────────────────────────
 
     class StationVH(v: View) : RecyclerView.ViewHolder(v) {
+        val card:    com.google.android.material.card.MaterialCardView = v.findViewById(R.id.stationCard)
+        val iconBg:  View      = v.findViewById(R.id.stationIconBg)
         val icon:    ImageView = v.findViewById(R.id.stationIcon)
         val title:   TextView  = v.findViewById(R.id.stationTitle)
         val summary: TextView  = v.findViewById(R.id.stationSummary)
-        val time:    TextView  = v.findViewById(R.id.stationTime)
-        val dist:    TextView  = v.findViewById(R.id.stationDist)
+        val main:    TextView  = v.findViewById(R.id.stationTime)
+        val meta:    TextView  = v.findViewById(R.id.stationDist)
         val lock:    ImageView = v.findViewById(R.id.stationLock)
-        val chevron: ImageView = v.findViewById(R.id.stationChevron)
     }
 
     class FrameVH(v: View) : RecyclerView.ViewHolder(v) {
@@ -254,5 +287,7 @@ class FrameLogAdapter(
         private const val TYPE_FRAME     = 1
         private const val MAX_STATIONS   = 150  // max unique stations kept
         private const val FRAME_HISTORY  = 20   // frames kept per station for expand view
+        private const val STALE_MS       = 30_000L
+        const val ACTIVE_MS              = 60_000L
     }
 }

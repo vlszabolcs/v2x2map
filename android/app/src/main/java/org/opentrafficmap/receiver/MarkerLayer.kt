@@ -15,7 +15,10 @@ import org.osmdroid.views.overlay.Polyline
 
 class MarkerLayer(private val map: MapView, private val context: Context) {
 
-    private data class Entry(val marker: Marker, val createdMs: Long)
+    private data class Entry(val marker: Marker, val createdMs: Long, val type: ItsG5Decoder.MsgType)
+
+    /** Message types whose markers are currently hidden by the filter chips. */
+    private val hiddenTypes = mutableSetOf<ItsG5Decoder.MsgType>()
 
     private val entries = ArrayDeque<Entry>()
 
@@ -46,8 +49,9 @@ class MarkerLayer(private val map: MapView, private val context: Context) {
             title   = buildTitle(f)
             snippet = buildSnippet(f)
         }
+        m.isEnabled = f.msgType !in hiddenTypes
         map.overlays.add(m)
-        entries.addLast(Entry(m, System.currentTimeMillis()))
+        entries.addLast(Entry(m, System.currentTimeMillis(), f.msgType))
         prune()
     }
 
@@ -58,6 +62,7 @@ class MarkerLayer(private val map: MapView, private val context: Context) {
                 setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER)
             }.also { map.overlays.add(it) }
         }
+        m.isEnabled = ItsG5Decoder.MsgType.CAM !in hiddenTypes
         m.position = pt
         m.icon     = makeCarIcon(f.speedMps, f.headingDeg)
         m.title    = buildTitle(f)
@@ -130,6 +135,17 @@ class MarkerLayer(private val map: MapView, private val context: Context) {
         if (changed) map.invalidate()
     }
 
+    /** Show or hide all markers of one message type (filter chips). */
+    fun setTypeVisible(type: ItsG5Decoder.MsgType, visible: Boolean) {
+        if (visible) hiddenTypes.remove(type) else hiddenTypes.add(type)
+        for (e in entries) if (e.type == type) e.marker.isEnabled = visible
+        if (type == ItsG5Decoder.MsgType.CAM) {
+            for (m in camMarkers.values) m.isEnabled = visible
+            for (p in pathLines.values) p.isEnabled = visible
+        }
+        map.invalidate()
+    }
+
     fun clear() {
         for (e in entries) map.overlays.remove(e.marker)
         entries.clear()
@@ -150,6 +166,7 @@ class MarkerLayer(private val map: MapView, private val context: Context) {
                 poly.outlinePaint.color       = ItsG5Decoder.MsgType.CAM.color
                 poly.outlinePaint.strokeWidth = 5f
                 poly.outlinePaint.alpha       = 160
+                poly.isEnabled = ItsG5Decoder.MsgType.CAM !in hiddenTypes
                 map.overlays.add(0, poly)
             }
         }

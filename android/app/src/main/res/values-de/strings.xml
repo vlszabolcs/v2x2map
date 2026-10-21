@@ -211,4 +211,57 @@
     <string name="hw_no_frames_body">Der Sniffer startet auf Kanal 1 (2,4 GHz). Echter ITS-G5-/V2X-Verkehr liegt bei 5,9 GHz — RSSI −128 dBm und null Frames ist normal bis der Kanal über die UART-Konsole (GPIO 11/12, ohne Probe nicht zugänglich) gewechselt wird.\n\nEin Test-Frame (Payload DEADBEEF…) wird bei jedem Boot gesendet und erscheint als erster Eintrag im Frame-Log — damit lässt sich prüfen ob USB und Firmware funktionieren.</string>
     <string name="hw_reset_title">Board aus der App zurücksetzen</string>
     <string name="hw_reset_body">Die USB- und BT-Verbindungsscreens haben eine „Reset beim Start"-Option, die RTS 100 ms lang auf HIGH setzt und dann wieder LOW. Das löst einen Soft-Reset des ESP32-C5 aus und erzeugt einen neuen Test-Frame.</string>
+
+    <!-- ── Neuer Hauptbildschirm ─────────────────────────────── -->
+    <string name="conn_pill_desc">Empfängerverbindung</string>
+    <string name="conn_none">Kein Empfänger verbunden</string>
+    <string name="conn_none_sub">Tippen, um per USB oder Bluetooth zu verbinden</string>
+    <string name="conn_usb">USB</string>
+    <string name="conn_bt">Bluetooth</string>
+    <string name="conn_receiver">Empfänger</string>
+    <string name="conn_title_fmt">%1$s · %2$s</string>
+    <string name="conn_rate">%1$d / min · %2$d Frames</string>
+    <string name="conn_connecting">Verbinde per %1$s…</string>
+    <string name="conn_error">%1$s-Verbindungsfehler</string>
+    <string name="conn_choose_title">Verbindung</string>
+    <string name="conn_action_usb_connect">Per USB verbinden</string>
+    <string name="conn_action_usb_disconnect">USB trennen</string>
+    <string name="conn_action_bt_connect">Per Bluetooth verbinden</string>
+    <string name="conn_action_bt_disconnect">Bluetooth trennen</string>
+    <string name="rec_chip">● REC %1$s</string>
+    <string name="stat_frames">Frames</string>
+    <string name="stat_stations">Stationen (60 s)</string>
+    <string name="stat_rate_caption">pro Minute</string>
+    <string name="stations_title">Stationen</string>
+    <string name="empty_hint">Empfänger per USB-OTG-Adapter anstecken oder per Bluetooth verbinden, dann eine C-ITS-Strecke befahren.</string>
+    <string name="last_frame_fmt">Zuletzt: %1$s · %2$s</string>
+    <string name="spat_signal_dist">Ampel voraus · %1$s</string>
+    <string name="speed_meta">km/h · %1$s</string>
+    <string name="label_traffic_light">Ampel</string>
+    <string name="label_vehicle">Fahrzeug</string>
+    <string name="secured_desc">Signierte Nachricht</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_m">%1$d min</string>
+    <string-array name="station_types">
+        <item>Unbekannt</item>
+        <item>Fußgänger</item>
+        <item>Radfahrer</item>
+        <item>Moped</item>
+        <item>Motorrad</item>
+        <item>Pkw</item>
+        <item>Bus</item>
+        <item>Leichter Lkw</item>
+        <item>Schwerer Lkw</item>
+        <item>Anhänger</item>
+        <item>Sonderfahrzeug</item>
+        <item>Straßenbahn</item>
+        <item>Stationstyp 12</item>
+        <item>Stationstyp 13</item>
+        <item>Stationstyp 14</item>
+        <item>Straßenstation (RSU)</item>
+    </string-array>
+    <string-array name="compass_points">
+        <item>N</item><item>NO</item><item>O</item><item>SO</item>
+        <item>S</item><item>SW</item><item>W</item><item>NW</item>
+    </string-array>
 </resources>

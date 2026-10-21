@@ -17,9 +17,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.constraintlayout.widget.ConstraintSet
+import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.chip.Chip
+import com.google.android.material.color.MaterialColors
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -61,11 +64,14 @@ class MainActivity : AppCompatActivity() {
     @Volatile private var lastSpeedMps: Float = 0f
     @Volatile private var followEnabled: Boolean = false
     @Volatile private var spatLightEnabled: Boolean = true
-    private var logExpanded = true
+    private lateinit var sheet: BottomSheetBehavior<View>
 
-    // Button default tints (restored on IDLE)
-    private var defaultBtnTintUsb: ColorStateList? = null
-    private var defaultBtnTintBt:  ColorStateList? = null
+    // Connection state shown in the top pill
+    private var usbState = UsbSerialController.State.IDLE
+    private var usbInfo: String? = null
+    private var btState = BluetoothController.State.IDLE
+    private var btInfo: String? = null
+    private var recStartMs = 0L
 
     // Own GPS track
     private val ownTrackPoints = mutableListOf<GeoPoint>()
@@ -157,8 +163,23 @@ class MainActivity : AppCompatActivity() {
         geiger  = GeigerCounter(this)
         if (Prefs.audioFeedback(this)) geiger.start()
 
-        setSupportActionBar(binding.toolbar)
-        binding.toolbar.setOnMenuItemClickListener(::onMenuItemClick)
+        sheet = BottomSheetBehavior.from(binding.sheet)
+        sheet.state = BottomSheetBehavior.STATE_COLLAPSED
+        binding.sheetPeek.setOnClickListener {
+            sheet.state = if (sheet.state == BottomSheetBehavior.STATE_COLLAPSED)
+                BottomSheetBehavior.STATE_HALF_EXPANDED else BottomSheetBehavior.STATE_COLLAPSED
+        }
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (sheet.state != BottomSheetBehavior.STATE_COLLAPSED) {
+                    sheet.state = BottomSheetBehavior.STATE_COLLAPSED
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
+                }
+            }
+        })
 
         binding.map.setTileSource(tileSourceForKey(Prefs.mapLayer(this)))
         binding.map.setMultiTouchControls(true)
@@ -171,16 +192,15 @@ class MainActivity : AppCompatActivity() {
         binding.log.layoutManager = LinearLayoutManager(this)
         binding.log.adapter = adapter
 
-        // Cache default button tints before any programmatic change
-        defaultBtnTintUsb = binding.btnConnect.backgroundTintList
-        defaultBtnTintBt  = binding.btnConnectBt.backgroundTintList
-
-        binding.btnConnect.setOnClickListener { toggleUsb() }
-        binding.btnConnectBt.setOnClickListener { toggleBt() }
+        binding.connPill.setOnClickListener { showConnectionMenu() }
+        binding.btnSettings.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
         binding.fabLocate.setOnClickListener { onLocateClick() }
         binding.fabLayers.setOnClickListener { showLayerPicker() }
         binding.fabCompass.setOnClickListener { toggleCompassMode() }
-        binding.logCollapseBtn.setOnClickListener { toggleLogPanel() }
+        setupFilterChips()
+        renderConnPill()
 
         // Reflect saved compass mode on FAB immediately
         applyCompassFabTint()
@@ -193,14 +213,100 @@ class MainActivity : AppCompatActivity() {
         mainHandler.post(logRefresh)
     }
 
-    override fun onCreateOptionsMenu(menu: android.view.Menu?): Boolean {
-        menuInflater.inflate(R.menu.menu_main, menu)
-        return true
+    // ------------------------------------------ Filter chips
+
+    private val chipTypes by lazy {
+        linkedMapOf(
+            binding.chipCam  to ItsG5Decoder.MsgType.CAM,
+            binding.chipDenm to ItsG5Decoder.MsgType.DENM,
+            binding.chipSpat to ItsG5Decoder.MsgType.SPATEM,
+            binding.chipMap  to ItsG5Decoder.MsgType.MAPEM,
+        )
     }
 
-    private fun onMenuItemClick(item: android.view.MenuItem): Boolean = when (item.itemId) {
-        R.id.action_settings -> { startActivity(Intent(this, SettingsActivity::class.java)); true }
-        else -> false
+    private fun setupFilterChips() {
+        for ((chip, type) in chipTypes) {
+            chip.text = type.short
+            chip.setOnCheckedChangeListener { c, on ->
+                c.alpha = if (on) 1f else 0.5f
+                markers.setTypeVisible(type, on)
+            }
+        }
+    }
+
+    private fun updateChipCounts(counts: Map<ItsG5Decoder.MsgType, Int>) {
+        for ((chip, type) in chipTypes) {
+            val n = counts[type] ?: 0
+            chip.text = if (n > 0) "${type.short}  $n" else type.short
+        }
+    }
+
+    // ------------------------------------------ Connection pill
+
+    private fun showConnectionMenu() {
+        val usbOn = usb != null
+        val btOn  = bt != null
+        val labels = arrayOf(
+            getString(if (usbOn) R.string.conn_action_usb_disconnect else R.string.conn_action_usb_connect),
+            getString(if (btOn)  R.string.conn_action_bt_disconnect  else R.string.conn_action_bt_connect),
+        )
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.conn_choose_title)
+            .setItems(labels) { _, which -> if (which == 0) toggleUsb() else toggleBt() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /** Ordered by how "alive" a link is: the livelier link is shown in the pill. */
+    private enum class Health { IDLE, ERROR, BUSY, OK }
+
+    private fun renderConnPill(rate: Int = rateWindow.size) {
+        if (!::binding.isInitialized) return
+        val usbHealth = when (usbState) {
+            UsbSerialController.State.IDLE       -> Health.IDLE
+            UsbSerialController.State.REQUESTING -> Health.BUSY
+            UsbSerialController.State.CONNECTED  -> Health.OK
+            UsbSerialController.State.ERROR      -> Health.ERROR
+        }
+        val btHealth = when (btState) {
+            BluetoothController.State.IDLE       -> Health.IDLE
+            BluetoothController.State.SCANNING,
+            BluetoothController.State.CONNECTING -> Health.BUSY
+            BluetoothController.State.CONNECTED  -> Health.OK
+            BluetoothController.State.ERROR      -> Health.ERROR
+        }
+        // The more "alive" link wins the pill
+        val useUsb = usbHealth != Health.IDLE && usbHealth.ordinal >= btHealth.ordinal
+        val health = if (useUsb) usbHealth else btHealth
+        val via    = getString(if (useUsb) R.string.conn_usb else R.string.conn_bt)
+        val info   = (if (useUsb) usbInfo else btInfo)?.trim()?.takeIf { it.isNotEmpty() }
+
+        val (title, sub) = when (health) {
+            Health.IDLE  -> getString(R.string.conn_none) to getString(R.string.conn_none_sub)
+            Health.BUSY  -> getString(R.string.conn_connecting, via) to (info ?: "")
+            Health.OK    -> getString(R.string.conn_title_fmt, info ?: getString(R.string.conn_receiver), via) to
+                            getString(R.string.conn_rate, rate, totalFrames.toInt())
+            Health.ERROR -> getString(R.string.conn_error, via) to (info ?: "")
+        }
+        binding.connTitle.text = title
+        binding.connSub.text   = sub
+        binding.connSub.visibility = if (sub.isEmpty()) View.GONE else View.VISIBLE
+        binding.connDot.backgroundTintList = ColorStateList.valueOf(ContextCompat.getColor(this, when (health) {
+            Health.IDLE  -> R.color.status_idle
+            Health.BUSY  -> R.color.status_busy
+            Health.OK    -> R.color.status_ok
+            Health.ERROR -> R.color.status_error
+        }))
+
+        if (::recorder.isInitialized && recorder.isRecording) {
+            if (recStartMs == 0L) recStartMs = System.currentTimeMillis()
+            val sec = (System.currentTimeMillis() - recStartMs) / 1000
+            binding.recChip.text = getString(R.string.rec_chip, "%02d:%02d".format(sec / 60, sec % 60))
+            binding.recChip.visibility = View.VISIBLE
+        } else {
+            recStartMs = 0L
+            binding.recChip.visibility = View.GONE
+        }
     }
 
     override fun onResume() {
@@ -297,23 +403,15 @@ class MainActivity : AppCompatActivity() {
         ownTrackLine?.let { binding.map.overlays.remove(it) }
         ownTrackLine = null
         binding.logStats.text    = getString(R.string.log_stats, 0, 0)
+        binding.statFrames.text  = "0"
+        binding.statStations.text = "0"
+        binding.statRate.text    = "0"
+        binding.lastFrame.text   = getString(R.string.empty_log)
+        binding.activityBars.clear()
+        updateChipCounts(emptyMap())
         binding.emptyLog.visibility  = View.VISIBLE
         binding.spatLight.visibility = View.GONE
         binding.map.invalidate()
-    }
-
-    // ------------------------------------------ Log panel collapse
-
-    private fun toggleLogPanel() {
-        logExpanded = !logExpanded
-        val cs = ConstraintSet()
-        cs.clone(binding.root)
-        cs.setGuidelinePercent(R.id.logSplit, if (logExpanded) 0.70f else 0.96f)
-        cs.applyTo(binding.root)
-        binding.log.visibility = if (logExpanded) View.VISIBLE else View.GONE
-        if (!logExpanded) binding.emptyLog.visibility = View.GONE
-        else if (adapter.itemCount == 0) binding.emptyLog.visibility = View.VISIBLE
-        binding.logCollapseBtn.rotation = if (logExpanded) 0f else 180f
     }
 
     // ------------------------------------------ Map layers
@@ -328,7 +426,7 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.map_layer_humanitarian)
         )
         val current = keys.indexOf(Prefs.mapLayer(this)).coerceAtLeast(0)
-        AlertDialog.Builder(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.map_layer_title)
             .setSingleChoiceItems(labels, current) { dlg, which ->
                 val key = keys[which]
@@ -388,25 +486,28 @@ class MainActivity : AppCompatActivity() {
 
     private fun applyCompassFabTint() {
         if (!::binding.isInitialized) return
-        binding.fabCompass.backgroundTintList = if (compassMode)
-            ColorStateList.valueOf(0xFF2196F3.toInt())   // blue = active
-        else
-            defaultBtnTintUsb  // same neutral tint as other FABs
+        val attr = if (compassMode) androidx.appcompat.R.attr.colorPrimary
+                   else com.google.android.material.R.attr.colorOnSurface
+        binding.fabCompass.imageTintList =
+            ColorStateList.valueOf(MaterialColors.getColor(binding.fabCompass, attr))
+        binding.fabCompass.contentDescription =
+            getString(if (compassMode) R.string.compass_bearing_up else R.string.compass_north_up)
     }
 
     // ------------------------------------------ Speed overlay
 
     private fun updateSpeedOverlay(loc: Location) {
         val speedKph = loc.speed * 3.6f
-        val bearingText = if (loc.hasBearing()) formatBearing(loc.bearing) else "—°"
-        binding.speedOverlay.text = "$bearingText  ${"%3.0f km/h".format(speedKph)}"
+        val bearingText = if (loc.hasBearing()) formatBearing(loc.bearing) else "—"
+        binding.speedValue.text = "%.0f".format(speedKph)
+        binding.speedMeta.text  = getString(R.string.speed_meta, bearingText)
         binding.speedOverlay.visibility = View.VISIBLE
     }
 
     private fun formatBearing(deg: Float): String {
-        val card = arrayOf("N", "NE", "E", "SE", "S", "SW", "W", "NW")
+        val card = resources.getStringArray(R.array.compass_points)
         val idx = ((deg / 45f + 0.5f).toInt() % 8).coerceIn(0, 7)
-        return "%03.0f° %s".format(deg, card[idx])
+        return "%s %.0f°".format(card[idx], deg)
     }
 
     // ------------------------------------------ Own track
@@ -457,18 +558,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onUsbState(state: UsbSerialController.State, info: String?) = runOnUiThread {
-        binding.btnConnect.text = when (state) {
-            UsbSerialController.State.IDLE       -> getString(R.string.connect)
-            UsbSerialController.State.REQUESTING -> info ?: getString(R.string.usb_connecting)
-            UsbSerialController.State.CONNECTED  -> "${getString(R.string.disconnect)} ${info ?: ""}"
-            UsbSerialController.State.ERROR      -> "${getString(R.string.usb_error_btn)}  ${info?.take(22) ?: ""}"
-        }
-        binding.btnConnect.backgroundTintList = when (state) {
-            UsbSerialController.State.IDLE       -> defaultBtnTintUsb
-            UsbSerialController.State.REQUESTING -> ColorStateList.valueOf(0xFFFF9800.toInt())
-            UsbSerialController.State.CONNECTED  -> ColorStateList.valueOf(0xFF4CAF50.toInt())
-            UsbSerialController.State.ERROR      -> ColorStateList.valueOf(0xFFF44336.toInt())
-        }
+        usbState = state
+        usbInfo  = info
+        renderConnPill()
     }
 
     // --------------------------------------------------------------- BT
@@ -498,20 +590,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onBtState(state: BluetoothController.State, info: String?) = runOnUiThread {
-        binding.btnConnectBt.text = when (state) {
-            BluetoothController.State.IDLE       -> getString(R.string.connect_bt)
-            BluetoothController.State.SCANNING   -> info ?: getString(R.string.bt_scanning_label)
-            BluetoothController.State.CONNECTING -> info ?: getString(R.string.bt_connecting_label)
-            BluetoothController.State.CONNECTED  -> "${getString(R.string.disconnect_bt)} ${info ?: ""}"
-            BluetoothController.State.ERROR      -> "${getString(R.string.bt_error_btn)}  ${info?.take(22) ?: ""}"
-        }
-        binding.btnConnectBt.backgroundTintList = when (state) {
-            BluetoothController.State.IDLE       -> defaultBtnTintBt
-            BluetoothController.State.SCANNING,
-            BluetoothController.State.CONNECTING -> ColorStateList.valueOf(0xFFFF9800.toInt())
-            BluetoothController.State.CONNECTED  -> ColorStateList.valueOf(0xFF4CAF50.toInt())
-            BluetoothController.State.ERROR      -> ColorStateList.valueOf(0xFFF44336.toInt())
-        }
+        btState = state
+        btInfo  = info
+        renderConnPill()
     }
 
     // ---------------------------------------------------------- Location
@@ -569,10 +650,12 @@ class MainActivity : AppCompatActivity() {
     // -------------------------------------------------------- Recording
 
     private fun toggleRecording(): String = if (recorder.isRecording) {
+        recStartMs = 0L
         val stopped = recorder.stop()
         getString(R.string.rec_stopped, recorder.frameCount, stopped?.absolutePath ?: "?")
     } else {
         val f = recorder.start()
+        recStartMs = System.currentTimeMillis()
         if (f != null) getString(R.string.rec_started, f.absolutePath) else "recording start failed"
     }
 
@@ -640,6 +723,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleFrames(frames: List<Frame>) {
+        frames.lastOrNull()?.let { f ->
+            val dist = adapter.formatDistance(f.latLon, lastLocation)
+            val what = adapter.titleFor(f.msgType, f)
+            binding.lastFrame.text = getString(R.string.last_frame_fmt, f.msgType.short,
+                if (dist == "—") what else "$what · $dist")
+        }
         val mqttFilter = Prefs.mqttFilterTypes(this)
         for (f in frames) {
             totalFrames++
@@ -649,6 +738,7 @@ class MainActivity : AppCompatActivity() {
             if (f.msgType.name in mqttFilter) mqttBridges.forEach { it.publish(f.payload) }
             if (recorder.isRecording) recorder.append(f)
             rateWindow.add(System.currentTimeMillis())
+            binding.activityBars.hit()
 
             if (f.msgType == ItsG5Decoder.MsgType.SPATEM && f.latLon != null) {
                 val (lat, lon) = f.latLon
@@ -681,18 +771,19 @@ class MainActivity : AppCompatActivity() {
 
         if (nearest == null) { binding.spatLight.visibility = View.GONE; return }
         binding.spatLight.visibility = View.VISIBLE
+        Location.distanceBetween(loc.latitude, loc.longitude, nearest.lat, nearest.lon, results)
+        binding.spatDist.text  = getString(R.string.spat_signal_dist, "%.0f m".format(results[0]))
+        binding.spatPhase.text = adapter.phaseLabel(nearest.phase)
+        binding.spatPhase.setTextColor(adapter.phaseColor(nearest.phase))
         applyPhaseColors(nearest.phase)
     }
 
     private fun applyPhaseColors(phase: SpatTemParser.Phase) {
-        val DIM = 0x33
-        fun tint(active: Boolean, r: Int, g: Int, b: Int): ColorStateList {
-            val alpha = if (active) 0xFF else DIM
-            return ColorStateList.valueOf((alpha shl 24) or (r shl 16) or (g shl 8) or b)
-        }
-        binding.lightRed.backgroundTintList    = tint(phase == SpatTemParser.Phase.RED,    0xCC, 0x22, 0x22)
-        binding.lightYellow.backgroundTintList = tint(phase == SpatTemParser.Phase.YELLOW, 0xCC, 0xAA, 0x00)
-        binding.lightGreen.backgroundTintList  = tint(phase == SpatTemParser.Phase.GREEN,  0x22, 0xCC, 0x22)
+        fun tint(active: Boolean, rgb: Int): ColorStateList =
+            ColorStateList.valueOf((if (active) 0xFF000000.toInt() else 0x38000000) or (rgb and 0xFFFFFF))
+        binding.lightRed.backgroundTintList    = tint(phase == SpatTemParser.Phase.RED,    0xFF5C5C)
+        binding.lightYellow.backgroundTintList = tint(phase == SpatTemParser.Phase.YELLOW, 0xFFC93D)
+        binding.lightGreen.backgroundTintList  = tint(phase == SpatTemParser.Phase.GREEN,  0x3DDC97)
     }
 
     /** Drains frame buffer into the grouped adapter every 300 ms. */
@@ -702,7 +793,7 @@ class MainActivity : AppCompatActivity() {
                 val batch = pendingLogFrames.toList()
                 pendingLogFrames.clear()
                 adapter.addFrames(batch)
-                if (logExpanded && binding.emptyLog.visibility != View.GONE)
+                if (binding.emptyLog.visibility != View.GONE)
                     binding.emptyLog.visibility = View.GONE
             }
             mainHandler.postDelayed(this, LOG_REFRESH_MS)
@@ -714,12 +805,15 @@ class MainActivity : AppCompatActivity() {
             val cutoff = System.currentTimeMillis() - 60_000
             while (rateWindow.isNotEmpty() && rateWindow.first() < cutoff) rateWindow.removeFirst()
             val rate = rateWindow.size
-            val suffix = when {
-                rate > 300 -> " ⚡"
-                rate > 60  -> ""
-                else       -> ""
-            }
-            binding.logStats.text = getString(R.string.log_stats, totalFrames.toInt(), rate) + suffix
+            binding.logStats.text = getString(R.string.log_stats, totalFrames.toInt(), rate)
+            val counts = adapter.activeCounts()
+            binding.statFrames.text   = String.format(java.util.Locale.ROOT, "%,d", totalFrames).replace(',', '\u202F')
+            binding.statStations.text = counts.values.sum().toString()
+            binding.statRate.text     = rate.toString()
+            updateChipCounts(counts)
+            binding.activityBars.tick()
+            adapter.refreshAges()
+            renderConnPill(rate)
             if (::markers.isInitialized) markers.prune()
             ReceiverForegroundService.instance?.updateStats(totalFrames.toInt(), rate)
             mainHandler.postDelayed(this, 1_000)

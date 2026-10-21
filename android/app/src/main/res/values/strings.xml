@@ -224,4 +224,57 @@
     <string name="about_license_flexbox">FlexboxLayout — Apache 2.0</string>
     <string name="about_license_kotlin">Kotlin Standard Library &amp; Coroutines — Apache 2.0</string>
     <string name="about_credits">Based on the firmware from opentrafficmap/its-g5-receiver-firmware (forked for ESP32-C5 + BLE streaming).</string>
+
+    <!-- ── Redesigned main screen ─────────────────────────────── -->
+    <string name="conn_pill_desc">Receiver connection</string>
+    <string name="conn_none">No receiver connected</string>
+    <string name="conn_none_sub">Tap to connect via USB or Bluetooth</string>
+    <string name="conn_usb">USB</string>
+    <string name="conn_bt">Bluetooth</string>
+    <string name="conn_receiver">Receiver</string>
+    <string name="conn_title_fmt">%1$s · %2$s</string>
+    <string name="conn_rate">%1$d / min · %2$d frames</string>
+    <string name="conn_connecting">Connecting via %1$s…</string>
+    <string name="conn_error">%1$s connection error</string>
+    <string name="conn_choose_title">Connection</string>
+    <string name="conn_action_usb_connect">Connect via USB</string>
+    <string name="conn_action_usb_disconnect">Disconnect USB</string>
+    <string name="conn_action_bt_connect">Connect via Bluetooth</string>
+    <string name="conn_action_bt_disconnect">Disconnect Bluetooth</string>
+    <string name="rec_chip">● REC %1$s</string>
+    <string name="stat_frames">frames</string>
+    <string name="stat_stations">stations (60 s)</string>
+    <string name="stat_rate_caption">per minute</string>
+    <string name="stations_title">Stations</string>
+    <string name="empty_hint">Plug the receiver in with a USB-OTG adapter or connect over Bluetooth, then drive along a C-ITS equipped road.</string>
+    <string name="last_frame_fmt">Last: %1$s · %2$s</string>
+    <string name="spat_signal_dist">Signal ahead · %1$s</string>
+    <string name="speed_meta">km/h · %1$s</string>
+    <string name="label_traffic_light">Traffic light</string>
+    <string name="label_vehicle">Vehicle</string>
+    <string name="secured_desc">Signed message</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_m">%1$d min</string>
+    <string-array name="station_types">
+        <item>Unknown</item>
+        <item>Pedestrian</item>
+        <item>Cyclist</item>
+        <item>Moped</item>
+        <item>Motorcycle</item>
+        <item>Passenger car</item>
+        <item>Bus</item>
+        <item>Light truck</item>
+        <item>Heavy truck</item>
+        <item>Trailer</item>
+        <item>Special vehicle</item>
+        <item>Tram</item>
+        <item>Station type 12</item>
+        <item>Station type 13</item>
+        <item>Station type 14</item>
+        <item>Roadside unit</item>
+    </string-array>
+    <string-array name="compass_points">
+        <item>N</item><item>NE</item><item>E</item><item>SE</item>
+        <item>S</item><item>SW</item><item>W</item><item>NW</item>
+    </string-array>
 </resources>

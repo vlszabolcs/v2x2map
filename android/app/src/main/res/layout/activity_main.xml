@@ -1,217 +1,467 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout
+<!-- Full-screen map with floating controls and a draggable bottom sheet
+     (peek: live stats, half/full: station list). -->
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/toolbar"
-        android:layout_width="0dp"
-        android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimaryContainer"
-        app:title="@string/app_name"
-        app:menu="@menu/menu_main"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
-
-    <!-- Compact connection row: dot + button, status baked into button text -->
-    <LinearLayout
-        android:id="@+id/controls"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp"
-        android:paddingTop="4dp"
-        android:paddingBottom="4dp"
-        android:gravity="center_vertical"
-        app:layout_constraintTop_toBottomOf="@id/toolbar"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnConnect"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginEnd="6dp"
-            android:text="@string/connect"
-            android:textSize="12sp"
-            android:maxLines="1"
-            android:ellipsize="end"/>
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnConnectBt"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="@string/connect_bt"
-            android:textSize="12sp"
-            android:maxLines="1"
-            android:ellipsize="end"/>
-
-    </LinearLayout>
-
-    <!-- Guideline — controls map/log split; changed programmatically to collapse log -->
-    <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/logSplit"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.70"/>
-
     <org.osmdroid.views.MapView
         android:id="@+id/map"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/controls"
-        app:layout_constraintBottom_toTopOf="@id/logHeader"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
 
-    <!-- SPATEM traffic-light overlay -->
+    <!-- ───────────── Top: connection pill + settings, filter chips ───────────── -->
     <LinearLayout
-        android:id="@+id/spatLight"
-        android:layout_width="wrap_content"
+        android:id="@+id/topBar"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:background="#CC111111"
-        android:paddingStart="10dp"
-        android:paddingEnd="10dp"
-        android:paddingTop="7dp"
-        android:paddingBottom="7dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginStart="8dp"
-        android:elevation="6dp"
-        android:visibility="gone"
-        app:layout_constraintTop_toTopOf="@id/map"
-        app:layout_constraintStart_toStartOf="@id/map">
-        <View android:id="@+id/lightRed"    android:layout_width="18dp" android:layout_height="18dp" android:background="@drawable/ic_status_dot"/>
-        <View android:id="@+id/lightYellow" android:layout_width="18dp" android:layout_height="18dp" android:layout_marginStart="5dp" android:background="@drawable/ic_status_dot"/>
-        <View android:id="@+id/lightGreen"  android:layout_width="18dp" android:layout_height="18dp" android:layout_marginStart="5dp" android:background="@drawable/ic_status_dot"/>
-    </LinearLayout>
+        android:layout_gravity="top"
+        android:orientation="vertical"
+        android:paddingTop="8dp">
 
-    <!-- Mini FAB: compass / bearing-up toggle (above layers FAB) -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabCompass"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="18dp"
-        android:layout_marginBottom="4dp"
-        android:contentDescription="@string/compass_north_up"
-        app:srcCompat="@drawable/ic_compass"
-        app:fabSize="mini"
-        app:layout_constraintEnd_toEndOf="@id/map"
-        app:layout_constraintBottom_toTopOf="@id/fabLayers"/>
-
-    <!-- Mini FAB: map layer picker -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabLayers"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="18dp"
-        android:layout_marginBottom="4dp"
-        android:contentDescription="@string/map_layer_title"
-        app:srcCompat="@drawable/ic_layers"
-        app:fabSize="mini"
-        app:layout_constraintEnd_toEndOf="@id/map"
-        app:layout_constraintBottom_toTopOf="@id/fabLocate"/>
-
-    <!-- Locate FAB -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabLocate"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="14dp"
-        android:contentDescription="@string/locate"
-        app:srcCompat="@drawable/ic_my_location"
-        app:layout_constraintEnd_toEndOf="@id/map"
-        app:layout_constraintBottom_toBottomOf="@id/map"/>
-
-    <!-- Speed / bearing overlay — bottom-left of map, always above log -->
-    <TextView
-        android:id="@+id/speedOverlay"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:background="#BB000000"
-        android:textColor="#FFFFFFFF"
-        android:textSize="13sp"
-        android:fontFamily="monospace"
-        android:padding="6dp"
-        android:layout_margin="8dp"
-        android:elevation="6dp"
-        android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="@id/map"
-        app:layout_constraintStart_toStartOf="@id/map"/>
-
-    <!-- Log header with packet stats and collapse button -->
-    <LinearLayout
-        android:id="@+id/logHeader"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:background="?attr/colorSurfaceContainer"
-        android:clickable="true"
-        android:focusable="true"
-        app:layout_constraintTop_toTopOf="@id/logSplit"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <TextView
-            android:layout_width="0dp"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:padding="6dp"
-            android:text="@string/frames_log_header"
-            android:textAllCaps="true"
-            android:textSize="11sp"/>
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:gravity="center_vertical">
 
-        <TextView
-            android:id="@+id/logStats"
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/connPill"
+                style="@style/Widget.V2X2MAP.MapCard"
+                android:layout_width="0dp"
+                android:layout_height="52dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="@string/conn_pill_desc"
+                app:cardCornerRadius="26dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="14dp">
+
+                    <View
+                        android:id="@+id/connDot"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:layout_marginEnd="12dp"
+                        android:background="@drawable/ic_status_dot"/>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/connTitle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="?attr/textAppearanceTitleSmall"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            tools:text="T-Dongle-C5 · USB"/>
+
+                        <TextView
+                            android:id="@+id/connSub"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textAppearance="@style/TextAppearance.V2X2MAP.Caption"
+                            android:fontFeatureSettings="tnum"
+                            android:maxLines="1"
+                            android:ellipsize="end"
+                            tools:text="312 / min"/>
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/recChip"
+                        android:layout_width="wrap_content"
+                        android:layout_height="26dp"
+                        android:layout_marginStart="8dp"
+                        android:gravity="center"
+                        android:paddingStart="10dp"
+                        android:paddingEnd="10dp"
+                        android:background="@drawable/bg_rec_chip"
+                        android:textColor="@color/status_error"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:fontFeatureSettings="tnum"
+                        android:visibility="gone"
+                        tools:visibility="visible"
+                        tools:text="● REC 02:13"/>
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginStart="8dp"
+                        android:importantForAccessibility="no"
+                        app:srcCompat="@drawable/ic_chevron_down"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.V2X2MAP.MapCard"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                app:cardCornerRadius="26dp">
+
+                <ImageButton
+                    android:id="@+id/btnSettings"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/settings"
+                    app:tint="?attr/colorOnSurface"
+                    app:srcCompat="@drawable/ic_settings"/>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:scrollbars="none"
+            android:clipToPadding="false"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/filterChips"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleLine="true"
+                app:chipSpacingHorizontal="8dp">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipCam"
+                    style="@style/Widget.V2X2MAP.TypeChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    app:chipIconTint="@color/type_cam"
+                    tools:text="CAM 38"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipDenm"
+                    style="@style/Widget.V2X2MAP.TypeChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    app:chipIconTint="@color/type_denm"
+                    tools:text="DENM 1"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipSpat"
+                    style="@style/Widget.V2X2MAP.TypeChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    app:chipIconTint="@color/type_spatem"
+                    tools:text="SPATEM 3"/>
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chipMap"
+                    style="@style/Widget.V2X2MAP.TypeChip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    app:chipIconTint="@color/type_mapem"
+                    tools:text="MAPEM 3"/>
+            </com.google.android.material.chip.ChipGroup>
+        </HorizontalScrollView>
+
+        <!-- SPATEM card: nearest relevant traffic light -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/spatLight"
+            style="@style/Widget.V2X2MAP.MapCard"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingEnd="4dp"
-            android:textSize="10sp"
-            android:alpha="0.7"
-            tools:text="0 pkts · 0/min"/>
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="12dp"
+            android:visibility="gone"
+            app:cardCornerRadius="20dp"
+            tools:visibility="visible">
 
-        <ImageView
-            android:id="@+id/logCollapseBtn"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:padding="6dp"
-            android:contentDescription="@string/toggle_log"
-            app:srcCompat="@drawable/ic_expand_more"/>
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:padding="12dp"
+                android:gravity="center_vertical">
+
+                <LinearLayout
+                    android:layout_width="34dp"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp"
+                    android:background="@drawable/bg_light_housing">
+                    <View android:id="@+id/lightRed"    android:layout_width="20dp" android:layout_height="20dp" android:background="@drawable/bg_light_lamp"/>
+                    <View android:id="@+id/lightYellow" android:layout_width="20dp" android:layout_height="20dp" android:layout_marginTop="6dp" android:background="@drawable/bg_light_lamp"/>
+                    <View android:id="@+id/lightGreen"  android:layout_width="20dp" android:layout_height="20dp" android:layout_marginTop="6dp" android:background="@drawable/bg_light_lamp"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/spatDist"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.V2X2MAP.Caption"
+                        android:fontFeatureSettings="tnum"
+                        tools:text="Signal · 210 m"/>
+
+                    <TextView
+                        android:id="@+id/spatPhase"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.V2X2MAP.Stat"
+                        tools:text="Green"/>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/log"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/logHeader"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
-
-    <TextView
-        android:id="@+id/emptyLog"
-        android:layout_width="0dp"
+    <!-- ───────────── Map controls, riding on top of the sheet ───────────── -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/mapControls"
+        style="@style/Widget.V2X2MAP.MapCard"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:padding="14dp"
-        android:gravity="center"
-        android:text="@string/empty_log"
-        android:textSize="12sp"
-        app:layout_constraintTop_toTopOf="@id/log"
-        app:layout_constraintBottom_toBottomOf="@id/log"
-        app:layout_constraintStart_toStartOf="@id/log"
-        app:layout_constraintEnd_toEndOf="@id/log"/>
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="12dp"
+        android:layout_gravity="top|end"
+        app:layout_anchor="@id/sheet"
+        app:layout_anchorGravity="top|end"
+        app:cardCornerRadius="24dp">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <ImageButton
+                android:id="@+id/fabLayers"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/map_layer_title"
+                app:tint="?attr/colorOnSurface"
+                app:srcCompat="@drawable/ic_layers"/>
+
+            <View android:layout_width="28dp" android:layout_height="1dp" android:layout_gravity="center_horizontal" android:background="?attr/colorOutlineVariant"/>
+
+            <ImageButton
+                android:id="@+id/fabCompass"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/compass_north_up"
+                app:tint="?attr/colorOnSurface"
+                app:srcCompat="@drawable/ic_compass"/>
+
+            <View android:layout_width="28dp" android:layout_height="1dp" android:layout_gravity="center_horizontal" android:background="?attr/colorOutlineVariant"/>
+
+            <ImageButton
+                android:id="@+id/fabLocate"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/locate"
+                app:tint="?attr/colorPrimary"
+                app:srcCompat="@drawable/ic_my_location"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Own speed / heading -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/speedOverlay"
+        style="@style/Widget.V2X2MAP.MapCard"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginBottom="12dp"
+        android:layout_gravity="top|start"
+        android:visibility="gone"
+        app:layout_anchor="@id/sheet"
+        app:layout_anchorGravity="top|start"
+        app:cardCornerRadius="16dp"
+        tools:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="bottom"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:id="@+id/speedValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:fontFeatureSettings="tnum"
+                android:textColor="?attr/colorOnSurface"
+                tools:text="48"/>
+
+            <TextView
+                android:id="@+id/speedMeta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_marginBottom="4dp"
+                android:textAppearance="@style/TextAppearance.V2X2MAP.Caption"
+                android:fontFeatureSettings="tnum"
+                tools:text="km/h · N 4°"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- ───────────── Bottom sheet ───────────── -->
+    <LinearLayout
+        android:id="@+id/sheet"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@drawable/bg_sheet"
+        android:elevation="8dp"
+        android:clickable="true"
+        android:focusable="false"
+        app:behavior_peekHeight="@dimen/sheet_peek"
+        app:behavior_fitToContents="false"
+        app:behavior_halfExpandedRatio="0.55"
+        app:behavior_expandedOffset="72dp"
+        app:behavior_hideable="false"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+        <View
+            android:layout_width="40dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="10dp"
+            android:background="@drawable/bg_sheet_handle"/>
+
+        <!-- Peek content: three numbers, activity bars, last frame -->
+        <LinearLayout
+            android:id="@+id/sheetPeek"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:id="@+id/statFrames" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="@style/TextAppearance.V2X2MAP.Stat" android:text="0"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="@style/TextAppearance.V2X2MAP.Caption" android:text="@string/stat_frames"/>
+                </LinearLayout>
+
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:id="@+id/statStations" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="@style/TextAppearance.V2X2MAP.Stat" android:text="0"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="@style/TextAppearance.V2X2MAP.Caption" android:text="@string/stat_stations"/>
+                </LinearLayout>
+
+                <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+                    <TextView android:id="@+id/statRate" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="@style/TextAppearance.V2X2MAP.Stat" android:text="0"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:textAppearance="@style/TextAppearance.V2X2MAP.Caption" android:text="@string/stat_rate_caption"/>
+                </LinearLayout>
+            </LinearLayout>
+
+            <org.opentrafficmap.receiver.ActivityBarsView
+                android:id="@+id/activityBars"
+                android:layout_width="match_parent"
+                android:layout_height="26dp"
+                android:layout_marginTop="12dp"/>
+
+            <TextView
+                android:id="@+id/lastFrame"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textAppearance="@style/TextAppearance.V2X2MAP.Caption"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:text="@string/empty_log"/>
+        </LinearLayout>
+
+        <!-- Expanded content -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="20dp"
+            android:paddingBottom="8dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAppearance="?attr/textAppearanceTitleLarge"
+                android:textStyle="bold"
+                android:text="@string/stations_title"/>
+
+            <TextView
+                android:id="@+id/logStats"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.V2X2MAP.Caption"
+                android:fontFeatureSettings="tnum"
+                tools:text="4821 frames · 312/min"/>
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/log"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="24dp"/>
+
+            <TextView
+                android:id="@+id/emptyLog"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top"
+                android:padding="24dp"
+                android:gravity="center"
+                android:textAppearance="@style/TextAppearance.V2X2MAP.Caption"
+                android:textSize="14sp"
+                android:text="@string/empty_hint"/>
+        </FrameLayout>
+    </LinearLayout>
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

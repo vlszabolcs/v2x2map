@@ -241,10 +241,10 @@ object ItsG5Decoder {
     /** ITS message type. Colors are M3-friendly tones the Marker drawables tint to. */
     enum class MsgType(val short: String, val color: Int, val label: String) {
         UNKNOWN ("?",       0xFF607D8B.toInt(), "? – Unbekannt / Unknown"),
-        CAM     ("CAM",     0xFF1976D2.toInt(), "CAM – Fahrzeugposition / Vehicle position"),
-        DENM    ("DENM",    0xFFE65100.toInt(), "DENM – Gefahrenmeldung / Hazard warning"),
-        MAPEM   ("MAPEM",   0xFF7B1FA2.toInt(), "MAPEM – Kreuzungsgeometrie / Intersection map"),
-        SPATEM  ("SPATEM",  0xFF388E3C.toInt(), "SPATEM – Ampelphase / Signal phase & timing"),
+        CAM     ("CAM",     0xFF4C9AFF.toInt(), "CAM – Fahrzeugposition / Vehicle position"),
+        DENM    ("DENM",    0xFFFF9A4D.toInt(), "DENM – Gefahrenmeldung / Hazard warning"),
+        MAPEM   ("MAPEM",   0xFFB48CFF.toInt(), "MAPEM – Kreuzungsgeometrie / Intersection map"),
+        SPATEM  ("SPATEM",  0xFF3DDC97.toInt(), "SPATEM – Ampelphase / Signal phase & timing"),
         IVIM    ("IVIM",    0xFFC2185B.toInt(), "IVIM – Fahrzeuginfo / In-vehicle info"),
         SREM    ("SREM",    0xFF00838F.toInt(), "SREM – Signalanfrage / Signal request"),
         SSEM    ("SSEM",    0xFF00838F.toInt(), "SSEM – Signalstatus / Signal status"),

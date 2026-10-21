@@ -1,6 +1,53 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Plain Material 3 day/night with the system's dynamic colors. The
-         action bar is provided by an explicit MaterialToolbar in the layout. -->
-    <style name="Theme.V2X2MAP" parent="Theme.Material3.DayNight.NoActionBar"/>
+    <style name="Theme.V2X2MAP" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/brand_primary</item>
+        <item name="colorOnPrimary">@color/brand_on_primary</item>
+        <item name="colorPrimaryContainer">@color/brand_primary_container</item>
+        <item name="colorOnPrimaryContainer">@color/brand_on_primary_container</item>
+        <item name="colorSecondaryContainer">@color/brand_primary_container</item>
+        <item name="colorOnSecondaryContainer">@color/brand_on_primary_container</item>
+    </style>
+
+    <!-- Floating cards over the map -->
+    <style name="Widget.V2X2MAP.MapCard" parent="Widget.Material3.CardView.Elevated">
+        <item name="cardBackgroundColor">?attr/colorSurfaceContainer</item>
+        <item name="cardElevation">6dp</item>
+        <item name="strokeColor">?attr/colorOutlineVariant</item>
+        <item name="strokeWidth">1dp</item>
+    </style>
+
+    <style name="Widget.V2X2MAP.TypeChip" parent="Widget.Material3.Chip.Filter">
+        <item name="chipBackgroundColor">?attr/colorSurfaceContainer</item>
+        <item name="chipStrokeColor">?attr/colorOutlineVariant</item>
+        <item name="chipStrokeWidth">1dp</item>
+        <item name="chipIcon">@drawable/ic_status_dot</item>
+        <item name="chipIconVisible">true</item>
+        <item name="chipIconSize">10dp</item>
+        <item name="checkedIconVisible">false</item>
+        <item name="chipMinHeight">36dp</item>
+        <item name="android:textAppearance">@style/TextAppearance.V2X2MAP.Chip</item>
+        <item name="ensureMinTouchTargetSize">false</item>
+    </style>
+
+    <style name="TextAppearance.V2X2MAP.Chip" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:fontFeatureSettings">tnum</item>
+    </style>
+
+    <style name="TextAppearance.V2X2MAP.Stat" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="android:textStyle">bold</item>
+        <item name="android:fontFeatureSettings">tnum</item>
+    </style>
+
+    <style name="TextAppearance.V2X2MAP.Caption" parent="TextAppearance.Material3.BodySmall">
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="Widget.V2X2MAP.MapControl" parent="Widget.Material3.Button.IconButton">
+        <item name="android:layout_width">48dp</item>
+        <item name="android:layout_height">48dp</item>
+        <item name="iconTint">?attr/colorOnSurface</item>
+        <item name="iconSize">22dp</item>
+    </style>
 </resources>

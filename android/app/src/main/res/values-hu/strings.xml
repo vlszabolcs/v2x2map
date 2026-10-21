@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Magyar fordítás. A nem fordítandó értékek (app_name, alapértelmezett
+     bróker, node ID, GitHub URL) az alap values/strings.xml-ből jönnek. -->
+<resources>
+    <string name="status_disconnected">USB: nincs kapcsolat</string>
+    <string name="status_connected">USB: %1$s</string>
+    <string name="bt_status_disconnected">BT: nincs kapcsolat</string>
+    <string name="bt_status_connected">BT: %1$s</string>
+    <string name="connect">USB</string>
+    <string name="disconnect">USB ✕</string>
+    <string name="connect_bt">BT</string>
+    <string name="disconnect_bt">BT ✕</string>
+    <string name="mqtt_off">MQTT</string>
+    <string name="mqtt_on">MQTT (be)</string>
+    <string name="node_id_hint">Node ID</string>
+    <string name="stat_total">összesen %1$d</string>
+    <string name="stat_rate">%1$d/perc</string>
+    <string name="frames_log_header">Frame-napló</string>
+    <string name="empty_log">még nem érkezett frame…</string>
+
+    <string name="locate">Saját pozíció</string>
+    <string name="follow_on">Követés ●</string>
+    <string name="follow_off">Követés</string>
+    <string name="settings">Beállítások</string>
+    <string name="settings_title">Beállítások</string>
+    <string name="about_title">A V2X2MAP-ről</string>
+
+    <string name="rec_off">Felvétel</string>
+    <string name="rec_on">Felvétel leállítása</string>
+    <string name="rec_section">Frame-felvétel</string>
+    <string name="rec_status_idle">Nincs aktív felvétel</string>
+    <string name="rec_status_active">Aktív: %1$s (%2$d frame)</string>
+    <string name="rec_started">Felvétel elindult: %1$s</string>
+    <string name="rec_stopped">Felvétel leállt (%1$d frame, %2$s)</string>
+
+    <string name="map_section">Térkép</string>
+    <string name="marker_ttl_label">Objektumok és útvonalak láthatósága (perc)</string>
+    <string name="marker_ttl_hint">1 – 999999 perc. Alapértelmezés 60 (1 óra). Ennyi idő után minden marker és járműútvonal eltűnik.</string>
+    <string name="dl_map">Látható terület letöltése előre</string>
+    <string name="map_dl_started">Térképletöltés indul…</string>
+    <string name="map_dl_done">Térképletöltés kész</string>
+    <string name="map_dl_progress">Térképletöltés: %1$d / %2$d</string>
+    <string name="map_dl_unsupported">Ez a csempeforrás nem engedi a tömeges letöltést. Görgess és nagyíts a térképen, így a gyorsítótár magától feltöltődik.</string>
+
+    <string name="follow_section">Automatikus követés</string>
+    <string name="follow_label">Térkép középre igazítása mozgás közben</string>
+    <string name="follow_hint">A térkép követi a pozíciódat. A nagyítás az általad beállított szinten marad.</string>
+
+    <string name="audio_section">Hangjelzés</string>
+    <string name="audio_label">Geiger-számláló mód</string>
+    <string name="audio_hint">Rövid kattanás minden frame-nél, külön csipogás és rezgés DENM-veszélyjelzésnél. Az értesítési hangcsatornán szól.</string>
+
+    <string name="loc_unknown">A pozíció ismeretlen</string>
+    <string name="loc_perm_denied">Helymeghatározási engedély megtagadva</string>
+
+    <string name="ble_section">BLE koegzisztencia-ciklus</string>
+    <string name="cycle_settings">Ciklus</string>
+    <string name="cycle_presets_label">Előbeállítás</string>
+    <string name="cycle_disc_label">Nincs BLE kliens — Sniff / BLE ms</string>
+    <string name="cycle_conn_label">BLE csatlakozva — Sniff / BLE ms</string>
+    <string name="cycle_hint">Mezőnként 100…60000 ms. A Sniff legyen 30 s alatt, különben a BLE kapcsolat megszakad a felügyeleti időtúllépés miatt.</string>
+    <string name="preset_wardriving">Wardriving</string>
+    <string name="preset_stationary">Álló helyzet</string>
+    <string name="preset_pairing">Párosítás</string>
+    <string name="cycle_saved">Ciklus elmentve</string>
+    <string name="cycle_not_connected">Előbb csatlakozz BLE-n</string>
+    <string name="sniff_ms_hint">Sniff ms</string>
+    <string name="ble_ms_hint">BLE ms</string>
+
+    <string name="spat_light_section">Jelzőlámpa</string>
+    <string name="spat_light_label">SPATEM jelzőlámpa-kártya mutatása</string>
+    <string name="spat_light_hint">Megjelenik, ha egy jelzőlámpás RSU 400 m-en belül, nagyjából előtted van. A fázisszín csak nem aláírt SPATEM esetén ismert; aláírt vagy ismeretlen esetben szürke.</string>
+
+    <string name="mqtt_section">MQTT</string>
+    <string name="mqtt_enable">MQTT bekapcsolása</string>
+    <string name="mqtt_broker_label">Bróker címek</string>
+    <string name="mqtt_add_broker">Bróker hozzáadása</string>
+    <string name="delete_broker">Bróker törlése</string>
+    <string name="mqtt_node_label">Node ID</string>
+
+    <string name="map_layer_title">Térképréteg</string>
+    <string name="map_layer_standard">Normál (OpenStreetMap)</string>
+    <string name="map_layer_dark">Sötét (CartoDB)</string>
+    <string name="map_layer_satellite">Műhold (Esri)</string>
+    <string name="map_layer_transport">Tömegközlekedés (ÖPNV)</string>
+    <string name="map_layer_humanitarian">Humanitárius (HOT)</string>
+
+    <string name="mqtt_filter_btn">Üzenettípus-szűrő beállítása…</string>
+    <string name="mqtt_filter_hint">Csak a bejelölt üzenettípusok mennek tovább MQTT-re. Alapból minden típus be van kapcsolva.</string>
+
+    <string name="display_section">Megjelenés</string>
+    <string name="keep_screen_on_label">Képernyő ébren tartása</string>
+    <string name="dark_mode_label">Mindig sötét téma</string>
+
+    <string name="reset">Térkép és napló törlése</string>
+
+    <string name="toggle_log">Frame-napló ki/be</string>
+
+    <string name="log_stats">%1$d frame · %2$d/perc</string>
+
+    <string name="compass_north_up">Észak felül</string>
+    <string name="compass_bearing_up">Menetirány felül</string>
+
+    <string name="own_track_section">Saját útvonal</string>
+    <string name="own_track_label">Saját GPS-nyomvonal rajzolása</string>
+    <string name="own_track_hint">Kék vonallal rajzolja a mozgásodat. A Törlés gomb eltávolítja.</string>
+
+    <string name="about_section">Névjegy</string>
+    <string name="about_link">Licencek / Az alkalmazásról</string>
+    <string name="github_link">GitHub tároló</string>
+
+    <string name="legal_title">Jogi tudnivalók</string>
+    <string name="legal_body">A V2X2MAP járművek és közúti infrastruktúra ITS-G5 (5,9 GHz, IEEE 802.11p) rádióadatait veszi és naplózza. Ezek vétele és feldolgozása a nemzeti jogszabályok hatálya alá tartozik, különösen a távközlési, az adatvédelmi és a személyes adatok rögzítésére vonatkozó szabályok alá. Használat előtt győződj meg róla, hogy a te joghatóságodban jogosult vagy ezeket az adatokat venni (és adott esetben továbbítani). Az alkalmazás alapból nem tölt fel adatot külső szerverre. Az „Elfogadom” gombbal vállalod a jogszerű használat felelősségét.</string>
+    <string name="legal_accept">Elfogadom</string>
+    <string name="legal_quit">Kilépés</string>
+
+    <string name="detail_type_cam">CAM – Jármű</string>
+    <string name="detail_type_denm">DENM – Veszélyjelzés</string>
+    <string name="detail_type_mapem">MAPEM – Csomópont-térkép</string>
+    <string name="detail_type_spatem">SPATEM – Jelzőlámpa-fázisok</string>
+    <string name="detail_type_ivim">IVIM – Járműinformáció</string>
+    <string name="detail_type_srem">SREM – Jelzéskérés</string>
+    <string name="detail_type_ssem">SSEM – Jelzésállapot</string>
+    <string name="detail_type_tlm">TLM – Jelzőlámpa</string>
+    <string name="detail_type_rtcmem">RTCMEM – GNSS-korrekció</string>
+    <string name="detail_type_unknown">Ismeretlen</string>
+    <string name="detail_type_itsg5_unknown">ITS-G5 (ismeretlen BTP port)</string>
+    <string name="detail_label_frame">Frame</string>
+    <string name="detail_label_time">Idő</string>
+    <string name="detail_label_ethertype">EtherType</string>
+    <string name="detail_label_station">Állomás</string>
+    <string name="detail_label_position">Pozíció</string>
+    <string name="detail_label_speed">Sebesség</string>
+    <string name="detail_label_heading">Irány</string>
+    <string name="detail_label_cause">Ok</string>
+
+    <string name="log_hazard">Veszélyjelzés</string>
+    <string name="log_intersection">Csomópont</string>
+    <string name="log_phase_red">Piros</string>
+    <string name="log_phase_yellow">Sárga</string>
+    <string name="log_phase_green">Zöld</string>
+    <string name="log_phase_unknown">Ismeretlen fázis</string>
+
+    <string name="usb_connecting">USB: csatlakozás…</string>
+    <string name="usb_error_btn">USB ✗</string>
+    <string name="usb_reconnecting">USB: %1$d. újrapróbálás %2$d s múlva…</string>
+    <string name="usb_conn_lost">USB: újracsatlakozás…</string>
+    <string name="usb_perm_request">USB-engedély kérése…</string>
+    <string name="usb_perm_denied">USB-engedély megtagadva</string>
+    <string name="usb_no_driver">Nem található USB-illesztő</string>
+    <string name="usb_open_failed">Az eszköz nem nyitható meg</string>
+
+    <string name="bt_scanning_label">BT: keresés…</string>
+    <string name="bt_connecting_label">BT: csatlakozás…</string>
+    <string name="bt_error_btn">BT ✗</string>
+    <string name="bt_not_available">A Bluetooth nem érhető el</string>
+    <string name="bt_perm_missing">Hiányzik a BLE-engedély</string>
+    <string name="bt_searching">BT: %1$s keresése…</string>
+    <string name="bt_found">Megtalálva: %1$s</string>
+    <string name="bt_scan_error">BT keresési hiba: %1$d</string>
+    <string name="bt_reconnect">%1$d. újracsatlakozás (%2$d s)…</string>
+    <string name="bt_perm_denied">BT: keresési engedély megtagadva</string>
+    <string name="bt_scanner_na">A BLE-kereső nem érhető el</string>
+    <string name="bt_connect_refused">Csatlakozás elutasítva: %1$s</string>
+    <string name="bt_setup_failed">A BT beállítása sikertelen</string>
+
+    <string name="notif_channel_desc">ITS-G5 vétel aktív</string>
+    <string name="notif_running">ITS-G5 vétel fut</string>
+    <string name="notif_stats">%1$d frame · %2$d/perc</string>
+
+    <string name="msgtype_unknown">\? – Ismeretlen</string>
+    <string name="msgtype_cam">CAM – Járműpozíció</string>
+    <string name="msgtype_denm">DENM – Veszélyjelzés</string>
+    <string name="msgtype_mapem">MAPEM – Csomópont-térkép</string>
+    <string name="msgtype_spatem">SPATEM – Jelzőlámpa-fázis és időzítés</string>
+    <string name="msgtype_ivim">IVIM – Járműinformáció</string>
+    <string name="msgtype_srem">SREM – Jelzéskérés</string>
+    <string name="msgtype_ssem">SSEM – Jelzésállapot</string>
+    <string name="msgtype_tlm">TLM – Jelzőlámpa</string>
+    <string name="msgtype_rtcmem">RTCMEM – Korrekciós adat</string>
+
+    <string name="hw_section">Hardver: ESP32-C5 állapot-LED-ek</string>
+    <string name="hw_intro">A Waveshare ESP32-C5-WIFI6-KIT két LED-je látszik működés közben. (A LilyGO T-Dongle-C5-ön egy RGB LED és a kijelző mutatja az állapotot.)</string>
+    <string name="hw_led_power_title">Táp-LED (fehér/kék, mindig világít)</string>
+    <string name="hw_led_power_body">Addig világít, amíg a panel USB-tápot kap. Ha nem világít, ellenőrizd a kábelt és a portot.</string>
+    <string name="hw_led_user_title">Felhasználói LED (GPIO 8, a firmware vezérli)</string>
+    <string name="hw_led_user_body">• Nem világít – a sniffer rendben fut, frame-ekre vár.\n• Rövid villanás induláskor – bootloader / alkalmazás indul.\n• Folyamatosan világít – a panel letöltő módban ragadt. Ez akkor fordul elő, ha csatlakozáskor az RTS jel aktív. Az app és a bridge megnyitás után RTS=low-ra állítja; más soros programnál állítsd kézzel DTR=false, RTS=false értékre.</string>
+    <string name="hw_no_frames_title">Csatlakozva van, mégsem jön frame?</string>
+    <string name="hw_no_frames_body">A valódi ITS-G5 / V2X forgalom 5,9 GHz-en van. Ha a vevő más csatornán áll, −128 dBm és nulla frame normális, amíg a csatornát az UART konzolon át át nem állítod.\n\nMinden indításkor egy tesztframe (DEADBEEF… tartalommal) érkezik, ez lesz az első bejegyzés a naplóban – ez igazolja, hogy az USB és a firmware működik.</string>
+    <string name="hw_reset_title">A panel újraindítása az appból</string>
+    <string name="hw_reset_body">Az USB- és BT-kapcsolat képernyőn az „Újraindítás csatlakozáskor” opció 100 ms-ig magasra húzza az RTS-t, majd vissza. Ez kábelhúzás nélkül újraindítja az ESP32-C5-öt, és új tesztframe-et küld.</string>
+
+    <string name="about_version">Verzió: %1$s (build %2$d)</string>
+    <string name="about_blurb">Nyílt forráskódú vevő és élő térkép ITS-G5 (V2X) jármű- és infrastruktúra-adatokhoz. Hardver: ESP32-C5 sniffer USB- és BLE-híddal.</string>
+    <string name="about_licenses_header">Nyílt forráskódú könyvtárak</string>
+    <string name="about_license_osmdroid">OSMdroid — Apache License 2.0</string>
+    <string name="about_license_mik3y">usb-serial-for-android — MIT License</string>
+    <string name="about_license_paho">Eclipse Paho MQTT Client — EPL 2.0</string>
+    <string name="about_license_play_services">Play Services Location — Apache 2.0</string>
+    <string name="about_license_material">Android Material Components — Apache 2.0</string>
+    <string name="about_license_flexbox">FlexboxLayout — Apache 2.0</string>
+    <string name="about_license_kotlin">Kotlin Standard Library &amp; Coroutines — Apache 2.0</string>
+    <string name="about_credits">Az opentrafficmap/its-g5-receiver-firmware firmware-én alapul (ESP32-C5-re és BLE-streamingre forkolva).</string>
+
+    <!-- Új főképernyő -->
+    <string name="conn_pill_desc">Vevő kapcsolata</string>
+    <string name="conn_none">Nincs vevő csatlakoztatva</string>
+    <string name="conn_none_sub">Koppints a csatlakozáshoz (USB vagy Bluetooth)</string>
+    <string name="conn_usb">USB</string>
+    <string name="conn_bt">Bluetooth</string>
+    <string name="conn_receiver">Vevő</string>
+    <string name="conn_title_fmt">%1$s · %2$s</string>
+    <string name="conn_rate">%1$d / perc · %2$d frame</string>
+    <string name="conn_connecting">Csatlakozás: %1$s…</string>
+    <string name="conn_error">%1$s kapcsolati hiba</string>
+    <string name="conn_choose_title">Kapcsolat</string>
+    <string name="conn_action_usb_connect">Csatlakozás USB-n</string>
+    <string name="conn_action_usb_disconnect">USB bontása</string>
+    <string name="conn_action_bt_connect">Csatlakozás Bluetooth-on</string>
+    <string name="conn_action_bt_disconnect">Bluetooth bontása</string>
+    <string name="rec_chip">● REC %1$s</string>
+    <string name="stat_frames">frame</string>
+    <string name="stat_stations">állomás (60 s)</string>
+    <string name="stat_rate_caption">percenként</string>
+    <string name="stations_title">Állomások</string>
+    <string name="empty_hint">Dugd be a vevőt USB-OTG adapterrel, vagy csatlakozz Bluetooth-on, majd vezess C-ITS-szel felszerelt útszakaszon.</string>
+    <string name="last_frame_fmt">Utolsó: %1$s · %2$s</string>
+    <string name="spat_signal_dist">Jelzőlámpa előtted · %1$s</string>
+    <string name="speed_meta">km/h · %1$s</string>
+    <string name="label_traffic_light">Jelzőlámpa</string>
+    <string name="label_vehicle">Jármű</string>
+    <string name="secured_desc">Aláírt üzenet</string>
+    <string name="age_s">%1$d s</string>
+    <string name="age_m">%1$d perc</string>
+    <string-array name="station_types">
+        <item>Ismeretlen</item>
+        <item>Gyalogos</item>
+        <item>Kerékpáros</item>
+        <item>Segédmotor</item>
+        <item>Motorkerékpár</item>
+        <item>Személyautó</item>
+        <item>Busz</item>
+        <item>Kisteherautó</item>
+        <item>Tehergépjármű</item>
+        <item>Pótkocsi</item>
+        <item>Különleges jármű</item>
+        <item>Villamos</item>
+        <item>12-es állomástípus</item>
+        <item>13-as állomástípus</item>
+        <item>14-es állomástípus</item>
+        <item>Útmenti egység (RSU)</item>
+    </string-array>
+    <string-array name="compass_points">
+        <item>É</item><item>ÉK</item><item>K</item><item>DK</item>
+        <item>D</item><item>DNy</item><item>Ny</item><item>ÉNy</item>
+    </string-array>
+</resources>
