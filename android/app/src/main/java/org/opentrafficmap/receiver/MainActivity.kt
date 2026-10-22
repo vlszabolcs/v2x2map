@@ -384,6 +384,7 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         if (!::binding.isInitialized) return
         binding.map.onResume()
+        applyMapLayer()
         applyKeepScreenOn()
         LogReplay.pending?.let { LogReplay.pending = null; replayLog(it) }
         if (followEnabled || ownTrackEnabled || compassMode) ensureLocation()
@@ -492,58 +493,37 @@ class MainActivity : AppCompatActivity() {
     // ------------------------------------------ Map layers
 
     private fun showLayerPicker() {
-        val keys   = arrayOf("MAPNIK", "DARK", "SATELLITE", "TRANSPORT", "HOT")
-        val labels = arrayOf(
-            getString(R.string.map_layer_standard),
-            getString(R.string.map_layer_dark),
-            getString(R.string.map_layer_satellite),
-            getString(R.string.map_layer_transport),
-            getString(R.string.map_layer_humanitarian)
-        )
-        val current = keys.indexOf(Prefs.mapLayer(this)).coerceAtLeast(0)
+        val layers = MapLayers.visible(this)
+        val current = layers.indexOfFirst { it.key == Prefs.mapLayer(this) }
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.map_layer_title)
-            .setSingleChoiceItems(labels, current) { dlg, which ->
-                val key = keys[which]
+            .setSingleChoiceItems(layers.map { it.name }.toTypedArray(), current) { dlg, which ->
+                val key = layers[which].key
                 Prefs.setMapLayer(this, key)
-                binding.map.setTileSource(tileSourceForKey(key))
+                applyMapLayer()
                 dlg.dismiss()
+            }
+            .setNeutralButton(R.string.layers_manage) { _, _ ->
+                startActivity(Intent(this, MapLayersActivity::class.java))
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
 
-    private fun tileSourceForKey(key: String): ITileSource = when (key) {
-        "DARK" -> XYTileSource(
-            "CartoDB_DarkMatter", 0, 19, 256, ".png",
-            arrayOf(
-                "https://a.basemaps.cartocdn.com/dark_all/",
-                "https://b.basemaps.cartocdn.com/dark_all/",
-                "https://c.basemaps.cartocdn.com/dark_all/",
-                "https://d.basemaps.cartocdn.com/dark_all/"
-            )
-        )
-        "SATELLITE" -> object : OnlineTileSourceBase("Esri_WorldImagery", 0, 19, 256, "",
-            arrayOf("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/")
-        ) {
-            override fun getTileURLString(pMapTileIndex: Long): String =
-                "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/" +
-                "${MapTileIndex.getZoom(pMapTileIndex)}/${MapTileIndex.getY(pMapTileIndex)}/${MapTileIndex.getX(pMapTileIndex)}"
+    /** (Re)apply the selected base layer; also picks up edits made in the
+     *  layer manager. Falls back to the first visible layer. */
+    private fun applyMapLayer() {
+        val visible = MapLayers.visible(this)
+        var key = Prefs.mapLayer(this)
+        if (visible.none { it.key == key }) {
+            key = visible.firstOrNull()?.key ?: "MAPNIK"
+            Prefs.setMapLayer(this, key)
         }
-        "TRANSPORT" -> XYTileSource(
-            "OPNV_Karte", 0, 18, 256, ".png",
-            arrayOf("https://tileserver.memomaps.de/tilegen/")
-        )
-        "HOT" -> XYTileSource(
-            "HOT", 0, 19, 256, ".png",
-            arrayOf(
-                "https://a.tile.openstreetmap.fr/hot/",
-                "https://b.tile.openstreetmap.fr/hot/",
-                "https://c.tile.openstreetmap.fr/hot/"
-            )
-        )
-        else -> TileSourceFactory.MAPNIK
+        val src = MapLayers.tileSource(this, key)
+        if (binding.map.tileProvider.tileSource.name() != src.name()) binding.map.setTileSource(src)
     }
+
+    private fun tileSourceForKey(key: String): ITileSource = MapLayers.tileSource(this, key)
 
     // ------------------------------------------ Compass / bearing-up
 

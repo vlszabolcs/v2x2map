@@ -288,4 +288,25 @@
     <string name="conn_compact_desc">Vevő csatlakozva: %1$s, %2$d frame percenként</string>
     <string name="filter_label">Szűrő %1$d/%2$d</string>
     <string name="filter_desc">Szűrő: %1$d / %2$d üzenettípus látható</string>
+
+    <!-- Map layers -->
+    <string name="layers_title">Térképrétegek</string>
+    <string name="layers_hint">Saját csempeszervert (XYZ URL) adhatsz hozzá, elrejtheted a nem használt rétegeket, és beállíthatod a rétegválasztó sorrendjét.</string>
+    <string name="layers_add">Réteg hozzáadása</string>
+    <string name="layers_edit">Réteg szerkesztése</string>
+    <string name="layers_reset">Alapértelmezés visszaállítása</string>
+    <string name="layers_reset_body">Törli a saját rétegeket, és újra megjeleníti az összes beépítettet.</string>
+    <string name="layers_delete">Törlés</string>
+    <string name="layers_delete_title">Törlöd: „%1$s”?</string>
+    <string name="layers_builtin">Beépített</string>
+    <string name="layers_up">Feljebb</string>
+    <string name="layers_down">Lejjebb</string>
+    <string name="layers_visible">Megjelenjen a választóban</string>
+    <string name="layers_name">Név</string>
+    <string name="layers_url">Csempe URL</string>
+    <string name="layers_url_help">pl. https://{s}.tile.example.org/{z}/{x}/{y}.png — TMS-hez {-y}</string>
+    <string name="layers_max_zoom">Max. nagyítás</string>
+    <string name="layers_err_scheme">https:// vagy http:// kezdetűnek kell lennie</string>
+    <string name="layers_err_placeholders">Kell bele: {z}, {x} és {y} (vagy {-y})</string>
+    <string name="layers_manage">Rétegek kezelése…</string>
 </resources>

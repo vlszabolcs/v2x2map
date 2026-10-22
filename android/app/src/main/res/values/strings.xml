@@ -311,4 +311,25 @@
     <string name="conn_compact_desc">Receiver connected via %1$s, %2$d frames per minute</string>
     <string name="filter_label">Filter %1$d/%2$d</string>
     <string name="filter_desc">Filter: %1$d of %2$d message types shown</string>
+
+    <!-- Map layers -->
+    <string name="layers_title">Map layers</string>
+    <string name="layers_hint">Add your own tile server (XYZ URL), hide the layers you don\'t use and set the order of the layer picker.</string>
+    <string name="layers_add">Add layer</string>
+    <string name="layers_edit">Edit layer</string>
+    <string name="layers_reset">Restore defaults</string>
+    <string name="layers_reset_body">Removes your own layers and shows all built-in ones again.</string>
+    <string name="layers_delete">Delete</string>
+    <string name="layers_delete_title">Delete “%1$s”?</string>
+    <string name="layers_builtin">Built-in</string>
+    <string name="layers_up">Move up</string>
+    <string name="layers_down">Move down</string>
+    <string name="layers_visible">Show in layer picker</string>
+    <string name="layers_name">Name</string>
+    <string name="layers_url">Tile URL</string>
+    <string name="layers_url_help">e.g. https://{s}.tile.example.org/{z}/{x}/{y}.png — {-y} for TMS</string>
+    <string name="layers_max_zoom">Max zoom</string>
+    <string name="layers_err_scheme">Must start with https:// or http://</string>
+    <string name="layers_err_placeholders">Needs {z}, {x} and {y} (or {-y})</string>
+    <string name="layers_manage">Manage layers…</string>
 </resources>

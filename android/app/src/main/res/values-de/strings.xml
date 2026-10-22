@@ -298,4 +298,25 @@
     <string name="conn_compact_desc">Empfänger über %1$s verbunden, %2$d Frames pro Minute</string>
     <string name="filter_label">Filter %1$d/%2$d</string>
     <string name="filter_desc">Filter: %1$d von %2$d Nachrichtentypen sichtbar</string>
+
+    <!-- Map layers -->
+    <string name="layers_title">Kartenebenen</string>
+    <string name="layers_hint">Eigenen Kachelserver (XYZ-URL) hinzufügen, ungenutzte Ebenen ausblenden und die Reihenfolge der Auswahl festlegen.</string>
+    <string name="layers_add">Ebene hinzufügen</string>
+    <string name="layers_edit">Ebene bearbeiten</string>
+    <string name="layers_reset">Standard wiederherstellen</string>
+    <string name="layers_reset_body">Entfernt eigene Ebenen und blendet alle eingebauten wieder ein.</string>
+    <string name="layers_delete">Löschen</string>
+    <string name="layers_delete_title">„%1$s“ löschen?</string>
+    <string name="layers_builtin">Eingebaut</string>
+    <string name="layers_up">Nach oben</string>
+    <string name="layers_down">Nach unten</string>
+    <string name="layers_visible">In der Auswahl zeigen</string>
+    <string name="layers_name">Name</string>
+    <string name="layers_url">Kachel-URL</string>
+    <string name="layers_url_help">z. B. https://{s}.tile.example.org/{z}/{x}/{y}.png — {-y} für TMS</string>
+    <string name="layers_max_zoom">Max. Zoom</string>
+    <string name="layers_err_scheme">Muss mit https:// oder http:// beginnen</string>
+    <string name="layers_err_placeholders">Benötigt {z}, {x} und {y} (oder {-y})</string>
+    <string name="layers_manage">Ebenen verwalten…</string>
 </resources>
