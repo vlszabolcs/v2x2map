@@ -228,30 +228,55 @@ class MainActivity : AppCompatActivity() {
 
     // ------------------------------------------ Filter chips
 
-    private val chipTypes by lazy {
-        linkedMapOf(
-            binding.chipCam  to ItsG5Decoder.MsgType.CAM,
-            binding.chipDenm to ItsG5Decoder.MsgType.DENM,
-            binding.chipSpat to ItsG5Decoder.MsgType.SPATEM,
-            binding.chipMap  to ItsG5Decoder.MsgType.MAPEM,
+    private class FilterRow(
+        val row: View,
+        val box: com.google.android.material.checkbox.MaterialCheckBox,
+        val count: android.widget.TextView,
+        val type: ItsG5Decoder.MsgType,
+    )
+
+    private val filterRows by lazy {
+        listOf(
+            FilterRow(binding.filterCamRow,  binding.filterCam,  binding.countCam,  ItsG5Decoder.MsgType.CAM),
+            FilterRow(binding.filterDenmRow, binding.filterDenm, binding.countDenm, ItsG5Decoder.MsgType.DENM),
+            FilterRow(binding.filterSpatRow, binding.filterSpat, binding.countSpat, ItsG5Decoder.MsgType.SPATEM),
+            FilterRow(binding.filterMapRow,  binding.filterMap,  binding.countMap,  ItsG5Decoder.MsgType.MAPEM),
         )
     }
 
     private fun setupFilterChips() {
-        for ((chip, type) in chipTypes) {
-            chip.text = type.short
-            chip.setOnCheckedChangeListener { c, on ->
-                c.alpha = if (on) 1f else 0.5f
-                markers.setTypeVisible(type, on)
+        binding.filterButton.setOnClickListener { setFilterMenuOpen(binding.filterMenu.visibility != View.VISIBLE) }
+        for (r in filterRows) {
+            r.row.setOnClickListener { r.box.toggle() }
+            r.box.setOnCheckedChangeListener { _, on ->
+                markers.setTypeVisible(r.type, on)
+                updateFilterLabel()
             }
         }
+        // Tapping the map closes the menu
+        binding.map.setOnTouchListener { _, ev ->
+            if (ev.action == android.view.MotionEvent.ACTION_DOWN && binding.filterMenu.visibility == View.VISIBLE)
+                setFilterMenuOpen(false)
+            false
+        }
+        updateFilterLabel()
+    }
+
+    private fun setFilterMenuOpen(open: Boolean) {
+        android.transition.TransitionManager.beginDelayedTransition(binding.topBar)
+        binding.filterMenu.visibility = if (open) View.VISIBLE else View.GONE
+        binding.filterButton.isSelected = open
+    }
+
+    private fun updateFilterLabel() {
+        val on = filterRows.count { it.box.isChecked }
+        binding.filterLabel.text = getString(R.string.filter_label, on, filterRows.size)
+        binding.filterButton.contentDescription =
+            getString(R.string.filter_desc, on, filterRows.size)
     }
 
     private fun updateChipCounts(counts: Map<ItsG5Decoder.MsgType, Int>) {
-        for ((chip, type) in chipTypes) {
-            val n = counts[type] ?: 0
-            chip.text = if (n > 0) "${type.short}  $n" else type.short
-        }
+        for (r in filterRows) r.count.text = (counts[r.type] ?: 0).toString()
     }
 
     // ------------------------------------------ Connection pill

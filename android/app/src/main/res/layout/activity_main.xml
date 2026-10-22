@@ -163,59 +163,216 @@
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
 
-        <HorizontalScrollView
-            android:layout_width="match_parent"
+        <!-- Filter: one button, message types listed vertically in a menu -->
+        <LinearLayout
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
             android:layout_marginTop="8dp"
-            android:scrollbars="none"
-            android:clipToPadding="false"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp">
+            android:orientation="vertical">
 
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/filterChips"
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/filterButton"
+                style="@style/Widget.V2X2MAP.MapCard"
                 android:layout_width="wrap_content"
+                android:layout_height="44dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardCornerRadius="22dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="14dp"
+                    android:paddingEnd="16dp">
+
+                    <ImageView
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:layout_marginEnd="8dp"
+                        android:importantForAccessibility="no"
+                        app:tint="?attr/colorOnSurface"
+                        app:srcCompat="@drawable/ic_filter"/>
+
+                    <TextView
+                        android:id="@+id/filterLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:fontFeatureSettings="tnum"
+                        tools:text="Szűrő 4/4"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/filterMenu"
+                style="@style/Widget.V2X2MAP.MapCard"
+                android:layout_width="200dp"
                 android:layout_height="wrap_content"
-                app:singleLine="true"
-                app:chipSpacingHorizontal="8dp">
+                android:layout_marginTop="8dp"
+                android:visibility="gone"
+                app:cardCornerRadius="18dp"
+                tools:visibility="visible">
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipCam"
-                    style="@style/Widget.V2X2MAP.TypeChip"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:checked="true"
-                    app:chipIconTint="@color/type_cam"
-                    tools:text="CAM 38"/>
+                    android:orientation="vertical"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp">
+                <LinearLayout
+                    android:id="@+id/filterCamRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="12dp"
+                    android:background="?attr/selectableItemBackground">
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipDenm"
-                    style="@style/Widget.V2X2MAP.TypeChip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:checked="true"
-                    app:chipIconTint="@color/type_denm"
-                    tools:text="DENM 1"/>
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/filterCam"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="40dp"
+                        android:minHeight="40dp"
+                        android:checked="true"
+                        app:buttonTint="@color/type_cam"
+                        android:contentDescription="CAM"/>
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipSpat"
-                    style="@style/Widget.V2X2MAP.TypeChip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:checked="true"
-                    app:chipIconTint="@color/type_spatem"
-                    tools:text="SPATEM 3"/>
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="CAM"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textSize="14sp"/>
 
-                <com.google.android.material.chip.Chip
-                    android:id="@+id/chipMap"
-                    style="@style/Widget.V2X2MAP.TypeChip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:checked="true"
-                    app:chipIconTint="@color/type_mapem"
-                    tools:text="MAPEM 3"/>
-            </com.google.android.material.chip.ChipGroup>
-        </HorizontalScrollView>
+                    <TextView
+                        android:id="@+id/countCam"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.V2X2MAP.Caption"
+                        android:textSize="14sp"
+                        android:fontFeatureSettings="tnum"
+                        tools:text="38"/>
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/filterDenmRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="12dp"
+                    android:background="?attr/selectableItemBackground">
+
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/filterDenm"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="40dp"
+                        android:minHeight="40dp"
+                        android:checked="true"
+                        app:buttonTint="@color/type_denm"
+                        android:contentDescription="DENM"/>
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="DENM"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textSize="14sp"/>
+
+                    <TextView
+                        android:id="@+id/countDenm"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.V2X2MAP.Caption"
+                        android:textSize="14sp"
+                        android:fontFeatureSettings="tnum"
+                        tools:text="38"/>
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/filterSpatRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="12dp"
+                    android:background="?attr/selectableItemBackground">
+
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/filterSpat"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="40dp"
+                        android:minHeight="40dp"
+                        android:checked="true"
+                        app:buttonTint="@color/type_spatem"
+                        android:contentDescription="SPATEM"/>
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="SPATEM"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textSize="14sp"/>
+
+                    <TextView
+                        android:id="@+id/countSpat"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.V2X2MAP.Caption"
+                        android:textSize="14sp"
+                        android:fontFeatureSettings="tnum"
+                        tools:text="38"/>
+                </LinearLayout>
+                <LinearLayout
+                    android:id="@+id/filterMapRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="12dp"
+                    android:background="?attr/selectableItemBackground">
+
+                    <com.google.android.material.checkbox.MaterialCheckBox
+                        android:id="@+id/filterMap"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:minWidth="40dp"
+                        android:minHeight="40dp"
+                        android:checked="true"
+                        app:buttonTint="@color/type_mapem"
+                        android:contentDescription="MAPEM"/>
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="MAPEM"
+                        android:textAppearance="?attr/textAppearanceTitleSmall"
+                        android:textSize="14sp"/>
+
+                    <TextView
+                        android:id="@+id/countMap"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textAppearance="@style/TextAppearance.V2X2MAP.Caption"
+                        android:textSize="14sp"
+                        android:fontFeatureSettings="tnum"
+                        tools:text="38"/>
+                </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
         <!-- SPATEM card: nearest relevant traffic light -->
         <com.google.android.material.card.MaterialCardView

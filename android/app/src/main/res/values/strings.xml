@@ -309,4 +309,6 @@
     <string name="logs_download_all">Download all</string>
     <string name="conn_ble_short">BLE</string>
     <string name="conn_compact_desc">Receiver connected via %1$s, %2$d frames per minute</string>
+    <string name="filter_label">Filter %1$d/%2$d</string>
+    <string name="filter_desc">Filter: %1$d of %2$d message types shown</string>
 </resources>
