@@ -14,7 +14,7 @@ Python bridge and the setup wizard work without modification.
 | Status LED | WS2812 on GPIO27 | APA102: DI = GPIO5, CI = GPIO4 (bit-banged) |
 | SD card (SPI) | MOSI 7, MISO 2, CLK 6, CS 10 | MOSI/CMD 2, MISO/D0 7, CLK 6, CS 23 |
 | Display | none | ST7735 0.96" 80×160: CS 10, DC 3, RST 1, BL 0 (active low), shares SCK/MOSI with SD |
-| Button | none | BOOT (GPIO28): short press = screen on/off, hold 1.5 s = reset counters |
+| Button | BOOT (GPIO28): double press = BLE on/off | BOOT (GPIO28): short = screen on/off, double = BLE on/off, hold 1.5 s = reset counters |
 | Ethernet | optional W5500 | disabled (its CS/INT pins collide with the LED and LCD) |
 | Temperature | optional LM75 on I2C | ESP32-C5 internal sensor |
 | USB | USB-Serial-JTAG | USB-Serial-JTAG on the USB-A plug |
@@ -82,3 +82,65 @@ All options live in `menuconfig → Example Configuration`:
 - `Status LED type`, `APA102_*` pins and hardware brightness (default 4/31)
 - `Enable ST7735 status display`, LCD pins, offsets, button pin
 - `Temperature source` — LM75 or internal sensor
+
+## Operating modes (standalone / BLE / USB)
+
+| State | When | Sniffer | BLE | Position in the log |
+|---|---|---|---|---|
+| Connect window | first 60 s after power-on, or after a double press | ~75 % (1.5 s / 0.5 s) | advertising | GNSS |
+| Standalone | window expired, no client | 100 % | off | GNSS |
+| BLE client | phone connected | ~55 % (single radio) | connected | phone (`POS:`) |
+| Range lost | client dropped by supervision timeout | ~98 → 99 % | short adverts every 2 s → 10 s → 30 s, max 60 min | GNSS |
+| USB host | app/PC talks to the port | 100 % (unless BLE is on too) | as above | client (`POS:`) |
+
+- **Double press** toggles BLE: off → 60 s connect window; on (advertising,
+  connected or waiting) → off immediately.
+- A deliberate disconnect in the app switches BLE off; a range loss starts
+  the reconnect mode. Only the phone that identified itself with `HELLO:`
+  is let back in (the app does this automatically); "Forget this phone" in
+  the app clears it.
+- `CONFIG_BLE_WINDOW_S=0` (default on the Waveshare build) keeps BLE always
+  connectable, i.e. the original behaviour.
+
+## Standalone SD logging
+
+With a FAT32 card in the slot every frame is logged to
+`/sdcard/its/NNNNNNNN.ITS` (new file per boot, 16 MB or 60 min; the oldest
+files are removed when less than 64 MB / 5 % is free). The file uses the same
+record framing as the live stream plus JSON records for time sync and
+position, so it replays through the same parser.
+
+Download:
+- **App:** connection pill → *Logs on receiver*: download (resumable, CRC
+  checked), show on map, export PCAP, delete on the receiver.
+- **PC:** `python bridge/download_logs.py [--port COM7] [--delete]` – saves
+  `.its` and converts to `.pcap` (Wireshark). Or `its_g5_bridge.py --download-logs`.
+
+The receiver has no RTC. Frames are stamped with Unix time as soon as the
+time is known (GNSS fix or a connected app/PC); earlier frames are fixed up
+from the time-sync record when converting.
+
+## GNSS module (optional)
+
+Wire a 3.3 V UART GNSS (u-blox M10 recommended) to the UART0 pads:
+module TX → GPIO12, module RX ← GPIO11, 3V3, GND. Build with the extra overlay:
+
+```bash
+idf.py -B build-tdongle-gnss -D SDKCONFIG=build-tdongle-gnss/sdkconfig \
+  -D SDKCONFIG_DEFAULTS="sdkconfig;sdkconfig.defaults.tdongle-c5;sdkconfig.defaults.tdongle-c5-gnss" build
+```
+
+This build has no serial console (the pads are taken); configuration stays
+available over USB (`CFG:` and the command channel) and BLE. While a client
+supplies positions the u-blox module is put into backup sleep and woken when
+the client goes quiet for 10 s.
+
+## Command channel
+
+Same text commands over USB (one per line) and the BLE control
+characteristic `b6e57e90-12d8-4a47-9b21-3f0000000005`; replies are `ITSJ`
+(JSON) / `ITSL` (log chunk) records on the normal stream:
+
+`STATUS`, `TIME:<unix_ms>`, `POS:<unix_ms>,<lat>,<lon>,<alt>,<spd>,<hdg>,<acc>`,
+`LOG_LIST`, `LOG_GET:<id>:<offset>:<len>`, `LOG_DEL:<id>|ALL`, `LOG_ROTATE`,
+`HELLO:<client-id>`, `BLE_ON`, `BLE_OFF`, `BLE_FORGET`.

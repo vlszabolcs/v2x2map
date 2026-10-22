@@ -1,5 +1,26 @@
 # Firmware – tervezett fejlesztések
 
+## Állapot (2026-10-22, commit 2bcb227)
+
+| # | Fejlesztés | Állapot |
+|---|---|---|
+| 1 | Folyamatos vétel USB-n | **kész** – a 6. pont része: BLE nélkül nincs időosztás; USB-írás csak hosttal, atomikusan |
+| 2 | MQTT Wi-Fi-n | **kész** – `IP_EVENT_STA_GOT_IP`-re indul; ciklikus módban a pufferelés még hiányzik |
+| 3 | PCAP SD-re | **kész** – T-Dongle overlay: `SNIFFER_PCAP_DESTINATION_SD`, kártya bootkor csatolva |
+| 4 | SD-napló + letöltés | **kész** – firmware, app („Naplók a vevőn”), `bridge/download_logs.py` |
+| 5 | GNSS | **kész (kód)** – `sdkconfig.defaults.tdongle-c5-gnss`; modullal még nincs tesztelve |
+| 6 | Működési módok | **kész** – eltérés a tervtől: BLE-párosítás (bond) helyett az app egyedi azonosítót küld (`HELLO:`), az újracsatlakozási módban csak azt engedi be. Így iOS-en és régi Androidon is működik, és nem kell a véletlen BLE-címekkel (RPA) foglalkozni |
+
+Valós hardveren egyik sincs még kipróbálva; a protokollt gépi teszt
+ellenőrizte (C rekordok → Python olvasó, virtuális eszköz → letöltő).
+
+**Nyitott:** MQTT-pufferelés ciklikus Wi-Fi módban; RSSI továbbítása az
+appnak (a frame-fejlécben nincs hely, külön rekord kellene); app-oldali
+lefedettségi térkép, GPX/KML export, RSU-helybecslés (TODO 5 app része);
+visszajátszás időcsúszkával (most egyben tölt be).
+
+---
+
 ## 1. Folyamatos vétel USB-n (nincs BLE időosztás)
 
 **Probléma.** A `coex_window_task` (`main/bt_stream.c`) bootkor feltétel
