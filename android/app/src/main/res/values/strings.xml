@@ -307,4 +307,6 @@
     <string name="logs_partial">partial</string>
     <string name="logs_refresh">Refresh</string>
     <string name="logs_download_all">Download all</string>
+    <string name="conn_ble_short">BLE</string>
+    <string name="conn_compact_desc">Receiver connected via %1$s, %2$d frames per minute</string>
 </resources>

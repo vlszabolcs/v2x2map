@@ -43,7 +43,9 @@
                 android:contentDescription="@string/conn_pill_desc"
                 app:cardCornerRadius="26dp">
 
+                <!-- Full pill: shown while not (yet) connected -->
                 <LinearLayout
+                    android:id="@+id/connFull"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:orientation="horizontal"
@@ -108,7 +110,41 @@
                         android:importantForAccessibility="no"
                         app:srcCompat="@drawable/ic_chevron_down"/>
                 </LinearLayout>
+
+                <!-- Compact circle: green dot + link type once connected -->
+                <LinearLayout
+                    android:id="@+id/connCompact"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:visibility="gone">
+
+                    <View
+                        android:id="@+id/connCompactDot"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:background="@drawable/ic_status_dot"/>
+
+                    <TextView
+                        android:id="@+id/connCompactLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.04"
+                        android:textColor="?attr/colorOnSurface"
+                        tools:text="USB"/>
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
+
+            <Space
+                android:id="@+id/connSpacer"
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:visibility="gone"/>
 
             <com.google.android.material.card.MaterialCardView
                 style="@style/Widget.V2X2MAP.MapCard"

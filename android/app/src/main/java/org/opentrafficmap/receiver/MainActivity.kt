@@ -73,6 +73,7 @@ class MainActivity : AppCompatActivity() {
     private var btInfo: String? = null
     private var recStartMs = 0L
     private var lastPosSentMs = 0L
+    private var pillCompact = false
     private var replayTrack: Polyline? = null
 
     // Own GPS track
@@ -307,6 +308,26 @@ class MainActivity : AppCompatActivity() {
                             getString(R.string.conn_rate, rate, totalFrames.toInt())
             Health.ERROR -> getString(R.string.conn_error, via) to (info ?: "")
         }
+        // Once connected the pill shrinks to a circle: green dot + link type
+        val compact = health == Health.OK
+        if (compact != pillCompact) {
+            pillCompact = compact
+            android.transition.TransitionManager.beginDelayedTransition(binding.topBar)
+            val lp = binding.connPill.layoutParams as android.widget.LinearLayout.LayoutParams
+            lp.width  = if (compact) (52 * resources.displayMetrics.density).toInt() else 0
+            lp.weight = if (compact) 0f else 1f
+            binding.connPill.layoutParams = lp
+            binding.connFull.visibility    = if (compact) View.GONE else View.VISIBLE
+            binding.connCompact.visibility = if (compact) View.VISIBLE else View.GONE
+            binding.connSpacer.visibility  = if (compact) View.VISIBLE else View.GONE
+        }
+        val shortVia = getString(if (useUsb) R.string.conn_usb else R.string.conn_ble_short)
+        binding.connCompactLabel.text = shortVia
+        binding.connCompactDot.backgroundTintList =
+            ColorStateList.valueOf(ContextCompat.getColor(this, R.color.status_ok))
+        binding.connPill.contentDescription =
+            if (compact) getString(R.string.conn_compact_desc, shortVia, rate) else getString(R.string.conn_pill_desc)
+
         binding.connTitle.text = title
         binding.connSub.text   = sub
         binding.connSub.visibility = if (sub.isEmpty()) View.GONE else View.VISIBLE
@@ -322,9 +343,16 @@ class MainActivity : AppCompatActivity() {
             val sec = (System.currentTimeMillis() - recStartMs) / 1000
             binding.recChip.text = getString(R.string.rec_chip, "%02d:%02d".format(sec / 60, sec % 60))
             binding.recChip.visibility = View.VISIBLE
+            // In the circle there is no room for the timer: a red ring instead
+            binding.connPill.strokeColor = if (pillCompact)
+                ContextCompat.getColor(this, R.color.status_error)
+            else MaterialColors.getColor(binding.connPill, com.google.android.material.R.attr.colorOutlineVariant)
         } else {
             recStartMs = 0L
             binding.recChip.visibility = View.GONE
+            binding.connPill.strokeColor = if (pillCompact)
+                (ContextCompat.getColor(this, R.color.status_ok) and 0x00FFFFFF) or 0x8C000000.toInt()
+            else MaterialColors.getColor(binding.connPill, com.google.android.material.R.attr.colorOutlineVariant)
         }
     }
 

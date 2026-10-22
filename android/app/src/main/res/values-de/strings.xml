@@ -294,4 +294,6 @@
     <string name="logs_partial">unvollständig</string>
     <string name="logs_refresh">Aktualisieren</string>
     <string name="logs_download_all">Alle herunterladen</string>
+    <string name="conn_ble_short">BLE</string>
+    <string name="conn_compact_desc">Empfänger über %1$s verbunden, %2$d Frames pro Minute</string>
 </resources>

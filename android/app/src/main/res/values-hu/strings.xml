@@ -284,4 +284,6 @@
     <string name="logs_partial">részleges</string>
     <string name="logs_refresh">Frissítés</string>
     <string name="logs_download_all">Összes letöltése</string>
+    <string name="conn_ble_short">BLE</string>
+    <string name="conn_compact_desc">Vevő csatlakozva: %1$s, %2$d frame percenként</string>
 </resources>
