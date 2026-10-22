@@ -99,6 +99,62 @@ legyenek az appba vagy PC-re, USB-n és BLE-n.
 mindhárom üzemmódban fusson. A TODO 3 (PCAP SD-re) ezzel részben
 kiváltható; marad a konzolos `sniffer -P` útvonalra.
 
+## 5. GNSS a naplók kiegészítésére (önálló mobil sniffer)
+
+**Cél.** Telefon nélkül, autóban/gyalog hordozva a napló minden
+munkamenete kapjon pontos UTC-időt és a vevő saját pozícióját/mozgását.
+Ez a TODO 4 két hiányát is megoldja: nincs RTC (→ GNSS-idő), és nincs
+saját pozíció (→ távolságok, lefedettségi térkép, RSU-k helye akkor is,
+ha a frame-ben nincs pozíció vagy aláírt és nem dekódolható).
+
+**Hardver.**
+- Modul: UART-os GNSS, 3,3 V, NMEA (vagy u-blox UBX) kimenettel.
+  Jelöltek: u-blox MAX-M10S / NEO-M10 (alacsony fogyasztás, 10 Hz),
+  SAM-M10Q (beépített antennával), olcsó ATGM336H. Aktív patch-antenna
+  IPEX/SMA csatlakozóval, a 5,9 GHz-es antennától elválasztva.
+- Bekötés: a T-Dongle-C5-ön kevés a szabad láb. Kézenfekvő a UART0
+  padok (GPIO11 TX / GPIO12 RX) használata a GNSS-re → a konzol
+  (REPL) GNSS-módban kikapcsol; a beállítás a USB `CFG:` csatornán és
+  BLE-n marad. Ellenőrizni a kapcsolási rajzon, van-e további kivezetett
+  GPIO (PPS-hez és/vagy a konzol megtartásához).
+- PPS (opcionális, 1 további GPIO): µs-os időpontosság a frame
+  időbélyegekhez; NMEA-idő nélküle is ~10–50 ms pontos, a naplóhoz elég.
+- Táp: ~25–40 mA a USB 5 V → 3,3 V ágról; hidegindítás ~30 s,
+  meleg ~1–2 s. Backup-akku/szuperkapacitás a modulon gyorsítja az
+  újraindulást.
+- Mechanika: a USB-botra szerelve nem fér el, rövid kábelen vagy közös
+  3D-nyomtatott házban (antenna felül, szabad égbolttal).
+
+**Firmware.**
+- Kconfig: `ENABLE_GNSS`, UART-szám, RX/TX/PPS láb, baud (9600 / 38400),
+  frissítési ráta (1 / 5 / 10 Hz). T-Dongle overlayben alapból ki.
+- NMEA-parser (RMC, GGA, GSA, VTG elég) külön taskban; induláskor
+  opcionális UBX-konfig (ráta, csak a szükséges mondatok, autós
+  dinamikai modell).
+- Első érvényes UTC-időnél `settimeofday()` → a frame-ek valós
+  időbélyeget kapnak; a napló automatikusan `ITST` rekordot kap
+  (TODO 4), utána periodikusan (pl. percenként) is a drift követésére.
+- Új naplórekord: `ITSG` – UTC, lat, lon, magasság, sebesség, irány,
+  fix típus, műholdszám, HDOP; a beállított rátával (1–10 Hz), csak
+  változáskor/fix mellett. Fix nélkül is megy a naplózás.
+- Élő streambe is (USB/BLE) mehet az `ITSG`, így az app a dongle
+  pozícióját is mutathatja, ha a telefon GPS-e gyenge (opcionális).
+- Kijelző: „GNSS 3D · 9 sat · 52 km/h” sor; fix nélkül „GNSS keres”.
+- LED: fix nélkül lassú sárga villanás a háttérben (opcionális).
+
+**App / bridge.**
+- Visszajátszásnál a vevő útvonala a napló `ITSG` rekordjaiból,
+  távolság minden állomáshoz, sebesség/irány a vevőhöz képest.
+- Lefedettségi térkép: hol, milyen RSSI-vel/rátával volt vétel
+  (a TODO 1 utáni RSSI-továbbítással együtt értelmes).
+- RSU-k becsült helye több vételi pontból, ha a frame nem hordoz
+  pozíciót.
+- Export: GPX (saját útvonal), PCAP + GNSS oldalfájl, KML a
+  lefedettséghez.
+
+**Sorrend.** TODO 1 → TODO 4 → TODO 5. A GNSS a TODO 4 naplóformátumára
+épül, az idő-szinkron ott kiváltható vele.
+
 ## 3. PCAP SD-kártyára
 
 A T-Dongle build a stock `sdkconfig`-ból örökli a
