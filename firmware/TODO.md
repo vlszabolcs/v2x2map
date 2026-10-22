@@ -161,10 +161,39 @@ ha a frame-ben nincs pozíció vagy aláírt és nem dekódolható).
 - Bekapcsolás (bármilyen USB-táp) után **1 percig** BLE-hirdetés,
   ezalatt a telefon csatlakozhat. Ha 1 percen belül nem csatlakozik
   senki, a BLE teljesen kikapcsol.
-- **Dupla gombnyomás** (BOOT, GPIO28) újra bekapcsolja a BLE-hirdetést
-  **1 percre** – standalone és USB host módban is.
-- Kliens lecsatlakozásakor: 1 perces újracsatlakozási ablak, utána
-  BLE ki (feltételezés, egyeztetni).
+- **Dupla gombnyomás** (BOOT, GPIO28) BLE-kapcsolóként működik:
+  - ha a BLE ki van kapcsolva → hirdetés **1 percre** (standalone és
+    USB host módban is);
+  - ha a BLE be van kapcsolva (hirdet, kliens csatlakozva, vagy
+    újracsatlakozásra vár) → **BLE azonnal ki**: kliens bontása,
+    hirdetés leállítása, újracsatlakozási ablak törlése, folyamatos vétel.
+- Kliens elhagyja a hatókört → **újracsatlakozás csak az ismert
+  telefonnak, csökkenő gyakoriságú hirdetéssel** (lásd lent).
+
+**Újracsatlakozás hatókörvesztés után.**
+- Első csatlakozáskor egyszeri párosítás (bond, „Just Works”), a dongle
+  NVS-ben eltárolja a telefon identitását (IRK). A telefonok
+  véletlenszerű (RPA) címet használnak, ezért kell a bond; enélkül a
+  dongle nem ismeri fel újra a telefont.
+- Lecsatlakozás okának vizsgálata: ha supervision timeout (hatókör
+  vesztése) → újracsatlakozási mód; ha a kliens szándékosan bontott
+  (az appban „Bontás”) → BLE ki, nincs újracsatlakozás.
+- Újracsatlakozási mód: **csak a párosított telefon** csatlakozhat
+  (whitelist / filter accept list), más eszköz nem látja/nem kapcsolódhat.
+  A hirdetés rövid (~30 ms) burstökben megy, csökkenő gyakorisággal,
+  hogy a vételt alig zavarja:
+  - 0–2 perc: 2 s-onként (vétel ~98%)
+  - 2–15 perc: 10 s-onként
+  - 15–60 perc: 30 s-onként
+  - 60 perc után BLE ki (újra dupla nyomással)
+- Telefon oldalon az app `autoConnect=true`-val (háttér-csatlakozás)
+  vár a dongle-ra: amint hatókörbe ér és elkap egy hirdetést,
+  magától visszakapcsolódik, a felhasználónak nem kell semmit tennie.
+- Kiesés alatt a dongle SD-re naplóz (TODO 4); visszacsatlakozáskor
+  az app a hiányzó időszakot letöltheti a naplóból (`LOG_GET` a
+  bontás időpontjától) → nincs adatvesztés a térképen.
+- Az időzítések NVS-ben állíthatók; az app „Elfelejtés” gombja törli a
+  párosítást.
 
 **Állapotok.**
 
@@ -186,7 +215,8 @@ kikapcsolt telefonos helymeghatározás), a GNSS automatikusan felébred.
   A TODO 1 időosztó logikáját ez váltja ki.
 - Hirdetési ablak alatt nem 50/50 időosztás, hanem 2 s-onként ~200 ms
   BLE-ablak (vétel ~90%).
-- Gomb: dupla nyomás felismerése (két felengedés ≤ 400 ms-on belül);
+- Gomb: dupla nyomás = BLE be (1 perc) / BLE ki (ha be volt); felismerés:
+  két felengedés ≤ 400 ms-on belül;
   az egyszeri nyomás (kijelző ki/be) ezért ~300 ms késéssel reagál;
   hosszú nyomás (≥ 1,5 s, számlálók nullázása) marad.
 - Kliens-pozíció: új BLE karakterisztika és USB `POS:` parancs
@@ -196,7 +226,9 @@ kikapcsolt telefonos helymeghatározás), a GNSS automatikusan felébred.
 - GNSS altatás/ébresztés UBX-paranccsal a UART-on (nem kell plusz láb).
 - Kijelző: mód és hátralévő hirdetési idő, pl. „BLE 0:42”,
   „STANDALONE · GNSS 3D”, „USB · POS kliens”.
-- LED: kék villogás hirdetés alatt, türkiz BLE-kapcsolatnál.
+- LED: kék villogás hirdetés alatt, ritka kék villanás
+  újracsatlakozási módban, türkiz BLE-kapcsolatnál, rövid piros
+  villanás BLE kikapcsolásakor.
 
 **App.**
 - BLE-n és USB-n másodpercenként pozíció + idő küldése a dongle-nak.
