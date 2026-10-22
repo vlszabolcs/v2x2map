@@ -155,6 +155,60 @@ ha a frame-ben nincs pozíció vagy aláírt és nem dekódolható).
 **Sorrend.** TODO 1 → TODO 4 → TODO 5. A GNSS a TODO 4 naplóformátumára
 épül, az idő-szinkron ott kiváltható vele.
 
+## 6. Működési módok (standalone / BLE / USB host)
+
+**Szabály (2026-10-22).**
+- Bekapcsolás (bármilyen USB-táp) után **1 percig** BLE-hirdetés,
+  ezalatt a telefon csatlakozhat. Ha 1 percen belül nem csatlakozik
+  senki, a BLE teljesen kikapcsol.
+- **Dupla gombnyomás** (BOOT, GPIO28) újra bekapcsolja a BLE-hirdetést
+  **1 percre** – standalone és USB host módban is.
+- Kliens lecsatlakozásakor: 1 perces újracsatlakozási ablak, utána
+  BLE ki (feltételezés, egyeztetni).
+
+**Állapotok.**
+
+| Állapot | Vétel | BLE | GNSS | Helyadat a naplóban |
+|---|---|---|---|---|
+| Standalone, hirdetési ablak (1 perc) | ~90% (200 ms hirdetés / 2 s) | hirdet | be | GNSS |
+| Standalone | 100% | ki | be | GNSS |
+| BLE kliens csatlakozva | ~55% (egy rádió) | kapcsolat | alvó* | kliens (`POS`) |
+| USB host aktív | 100% | ki (dupla nyomásra 1 perc) | alvó* | kliens (`POS:`) |
+
+\* Ha 10 s-ig nem jön friss pozíció a klienstől (pl. PC-s bridge,
+kikapcsolt telefonos helymeghatározás), a GNSS automatikusan felébred.
+
+**Firmware.**
+- USB host felismerése: `usb_serial_jtag_is_connected()` (SOF-forgalom),
+  ~1 s-os váltás. Powerbanknál/töltőnél nincs host → standalone.
+- BLE: hirdetés-időzítő (60 s); lejáratkor `ble_gap_adv_stop()`, a
+  coex időosztás leáll, `ESP_COEX_PREFER_WIFI`, folyamatos vétel.
+  A TODO 1 időosztó logikáját ez váltja ki.
+- Hirdetési ablak alatt nem 50/50 időosztás, hanem 2 s-onként ~200 ms
+  BLE-ablak (vétel ~90%).
+- Gomb: dupla nyomás felismerése (két felengedés ≤ 400 ms-on belül);
+  az egyszeri nyomás (kijelző ki/be) ezért ~300 ms késéssel reagál;
+  hosszú nyomás (≥ 1,5 s, számlálók nullázása) marad.
+- Kliens-pozíció: új BLE karakterisztika és USB `POS:` parancs
+  (UTC-idő, lat, lon, magasság, sebesség, irány, pontosság), ~1 Hz.
+  A napló `ITSG` rekordot kap, forrásjelöléssel (gnss / ble / usb).
+  Az idő is innen szinkronizálódik (`ITST`), ha nincs GNSS.
+- GNSS altatás/ébresztés UBX-paranccsal a UART-on (nem kell plusz láb).
+- Kijelző: mód és hátralévő hirdetési idő, pl. „BLE 0:42”,
+  „STANDALONE · GNSS 3D”, „USB · POS kliens”.
+- LED: kék villogás hirdetés alatt, türkiz BLE-kapcsolatnál.
+
+**App.**
+- BLE-n és USB-n másodpercenként pozíció + idő küldése a dongle-nak.
+- Ha a dongle nem található: tipp a dupla gombnyomásra.
+
+**Megkötések.** BLE-kapcsolat alatt a vétel ~55% marad (egyetlen
+rádió); legjobb vétel USB-n vagy standalone. Powerbank-lekapcsolást
+alacsony áramnál a gyakorlatban ellenőrizni kell.
+
+**Sorrend.** Ez a TODO 1 (USB folyamatos vétel) bővített változata;
+a TODO 4 (SD-napló) és TODO 5 (GNSS) erre épül.
+
 ## 3. PCAP SD-kártyára
 
 A T-Dongle build a stock `sdkconfig`-ból örökli a
