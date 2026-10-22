@@ -42,6 +42,63 @@ az MQTT ott nem indul el. Javítás: Wi-Fi IP-re is `mqtt_start()`,
 IP-vesztésre leállítás; ciklikus Wi-Fi módban a csomagok pufferelése a
 Wi-Fi ablakig.
 
+## 4. Önálló SD-kártyás naplózás, utólagos letöltés (USB + BLE)
+
+**Cél.** A dongle telefon/PC nélkül, bármilyen USB-tápról (powerbank,
+autós töltő) naplózzon SD-kártyára, és a naplók utólag letölthetők
+legyenek az appba vagy PC-re, USB-n és BLE-n.
+
+**Döntések (2026-10-22).**
+- Formátum: nyers ITS5 keretek (ugyanaz, mint az USB/BLE stream), így az
+  app visszajátszhatja; Wiresharkhoz a bridge/app konvertál PCAP-ra.
+- Indítás: mindig naplóz, ha van kártya.
+- Letöltés: USB-n (app és PC/bridge) és BLE-n.
+
+**Firmware.**
+- Bootkor automatikus `mount sd`; ha nincs kártya vagy hibás, a naplózás
+  kimarad (kijelzőn „SD –”), a vétel megy tovább.
+- Munkamenetenként egy fájl: `/sdcard/its/NNNNNN.its` (folyamatos
+  sorszám NVS-ben, mert nincs RTC). Új fájl bootkor és X MB-onként
+  (pl. 16 MB) vagy óránként.
+- Fájlfejléc: `ITS5LOG1` magic, formátumverzió, node ID / MAC, firmware
+  verzió, boot-sorszám.
+- Rekordok: a meglévő `ITS5` keret változatlanul (14 B fejléc + frame),
+  plusz egy új `ITST` időszinkron-rekord: boot óta eltelt µs ↔ valós
+  Unix-idő. Ilyen akkor kerül a fájlba, amikor app/PC csatlakozik és
+  elküldi a pontos időt (`CFG:time=` USB-n, BLE config karakterisztikán).
+  Letöltéskor az app ebből számolja vissza a valós időbélyegeket; ha egy
+  munkamenetben nincs `ITST`, relatív idővel jelenik meg.
+- Írás külön taskban, RAM-pufferrel (pl. 32 KB), `fflush`/`fsync`
+  néhány másodpercenként → áramszünetnél legfeljebb pár másodperc vész el.
+  Az utolsó, csonka rekordot az olvasó eldobja.
+- Tele kártya: a legrégebbi fájlok törlése, amíg van X% szabad hely.
+  Letöltött-és-nyugtázott fájlok törlése az appból kérhető.
+- Az SD és az LCD közös SPI buszon van: buszhozzáférés mutexszel,
+  a kijelzőfrissítés ne blokkolja az írást.
+- Kijelző: „SD 1,2 GB szabad · REC 00042.its” sor.
+
+**Letöltő protokoll (USB `CFG`-csatorna mellé és BLE-n ugyanaz).**
+- `LOG_LIST` → fájlnév, méret, első/utolsó időbélyeg, van-e `ITST`.
+- `LOG_GET:<név>:<offset>:<hossz>` → darabolt bináris válasz, offsettel
+  folytatható (megszakadt letöltés után is).
+- `LOG_DEL:<név>`, `LOG_ROTATE` (aktuális fájl lezárása letöltés előtt).
+- USB: ~1 MB/s körül → egy óra (~5–20 MB) néhány másodperc.
+- BLE: külön karakterisztika a letöltésre, nagy MTU-val; ~10–30 kB/s,
+  egy óra naplója több perc. Letöltés alatt a sniffer szüneteljen
+  (a rádió a BLE-é), utána álljon vissza.
+- Letöltés közben az élő USB/BLE stream szüneteljen vagy keretezve
+  keveredjen, hogy az app szét tudja választani.
+
+**App / bridge.**
+- „Naplók a vevőn” képernyő: lista, letöltés folyamatjelzővel, törlés.
+- Letöltött munkamenet visszajátszása a térképre (időcsúszkával),
+  exportálás PCAP-ba (link type 105) és opcionálisan MQTT-re.
+- Python bridge: `--download-logs` kapcsoló, PCAP-konverzióval.
+
+**Összefüggések.** A TODO 1 (folyamatos USB-vétel) után a naplózás
+mindhárom üzemmódban fusson. A TODO 3 (PCAP SD-re) ezzel részben
+kiváltható; marad a konzolos `sniffer -P` útvonalra.
+
 ## 3. PCAP SD-kártyára
 
 A T-Dongle build a stock `sdkconfig`-ból örökli a
