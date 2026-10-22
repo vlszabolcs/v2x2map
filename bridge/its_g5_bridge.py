@@ -478,8 +478,16 @@ def main():
                    help="suppress automatic browser opening")
     p.add_argument("--pcap-out", default="",
                    help="write all captured frames to a .pcap file (DLT_IEEE802_11)")
+    p.add_argument("--download-logs", action="store_true",
+                   help="download the receiver's SD-card logs (+ PCAP) and exit")
+    p.add_argument("--logs-out", default="",
+                   help="folder for --download-logs (default: recordings folder)")
     p.add_argument("--verbose", "-v", action="store_true")
     args = p.parse_args()
+
+    if args.download_logs:
+        import download_logs
+        return download_logs.run(args.port, args.logs_out or _recordings_dir())
 
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,

@@ -16,10 +16,37 @@
 #include "esp_coexist.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
+#include "ctrl.h"
 #include "led.h"
+#include "records.h"
+#include "freertos/semphr.h"
 
 static const char TAG[] = "USB_STREAM";
 static bool s_ready;
+static SemaphoreHandle_t s_tx_mtx;
+
+/* All USB TX goes through here so records from different tasks (sniffer,
+ * control replies, debug lines) never interleave mid-record. */
+static int usb_write_locked(const uint8_t *buf, size_t len, TickType_t to)
+{
+    if (!s_ready) return 0;
+    if (s_tx_mtx && xSemaphoreTake(s_tx_mtx, to) != pdTRUE) return 0;
+    int n = usb_serial_jtag_write_bytes(buf, len, to);
+    if (s_tx_mtx) xSemaphoreGive(s_tx_mtx);
+    return n;
+}
+
+bool usb_stream_host_connected(void)
+{
+    return usb_serial_jtag_is_connected();
+}
+
+void usb_stream_send_record(const uint8_t *buf, size_t len)
+{
+    if (!s_ready) usb_stream_init();
+    if (!usb_serial_jtag_is_connected()) return;
+    usb_write_locked(buf, len, pdMS_TO_TICKS(200));
+}
 
 void usb_stream_init(void)
 {
@@ -31,6 +58,7 @@ void usb_stream_init(void)
 
     esp_err_t err = usb_serial_jtag_driver_install(&cfg);
     if (err == ESP_OK || err == ESP_ERR_INVALID_STATE) {
+        if (!s_tx_mtx) s_tx_mtx = xSemaphoreCreateMutex();
         s_ready = true;
     } else {
         ESP_LOGE(TAG, "usb_serial_jtag_driver_install failed: %s", esp_err_to_name(err));
@@ -42,19 +70,18 @@ void usb_stream_publish_packet(const uint8_t *payload, uint16_t len, uint32_t se
     if (!s_ready) usb_stream_init();
     if (!s_ready) return;
 
-    uint8_t hdr[14] = {
-        'I', 'T', 'S', '5',
-        (uint8_t)(sec  & 0xff), (uint8_t)((sec  >>  8) & 0xff),
-        (uint8_t)((sec >> 16) & 0xff), (uint8_t)((sec >> 24) & 0xff),
-        (uint8_t)(usec & 0xff), (uint8_t)((usec >>  8) & 0xff),
-        (uint8_t)((usec >> 16) & 0xff), (uint8_t)((usec >> 24) & 0xff),
-        (uint8_t)(len  & 0xff), (uint8_t)((len  >>  8) & 0xff),
-    };
+    /* No host (power bank / charger): don't spend time on a dead port */
+    if (!usb_serial_jtag_is_connected()) return;
 
-    usb_serial_jtag_write_bytes(hdr, sizeof(hdr), pdMS_TO_TICKS(50));
-    if (len > 0) {
-        usb_serial_jtag_write_bytes(payload, len, pdMS_TO_TICKS(50));
-    }
+    /* Header + payload in one write so a slow or absent reader can only cost
+     * one short timeout per frame instead of two. */
+    uint8_t stackbuf[REC_FRAME_HDR + 512];
+    uint8_t *buf = (len <= 512) ? stackbuf : malloc(REC_FRAME_HDR + len);
+    if (!buf) return;
+    rec_frame_hdr(buf, sec, usec, len);
+    if (len) memcpy(buf + REC_FRAME_HDR, payload, len);
+    usb_write_locked(buf, REC_FRAME_HDR + len, pdMS_TO_TICKS(20));
+    if (buf != stackbuf) free(buf);
     led_pulse_usb_tx();
 }
 
@@ -74,7 +101,7 @@ void usb_stream_send_test_frame(void)
  * ──────────────────────────────────────────────────────────────────────*/
 static void cfg_reply(const char *msg)
 {
-    usb_serial_jtag_write_bytes((const uint8_t *)msg, strlen(msg), pdMS_TO_TICKS(200));
+    usb_write_locked((const uint8_t *)msg, strlen(msg), pdMS_TO_TICKS(200));
 }
 
 /* Map key name → config_index_t */
@@ -177,7 +204,7 @@ static void cfg_scan_task(void *arg)
         esp_wifi_scan_get_ap_num(&n);
         char dbg[32];
         int dl = snprintf(dbg, sizeof(dbg), "SCAN_N:%d\n", (int)n);
-        usb_serial_jtag_write_bytes((uint8_t *)dbg, dl, pdMS_TO_TICKS(200));
+        usb_write_locked((uint8_t *)dbg, dl, pdMS_TO_TICKS(200));
 
         wifi_ap_record_t *aps = NULL;
         if (n > 0) {
@@ -190,13 +217,13 @@ static void cfg_scan_task(void *arg)
                                (char *)aps[i].ssid,
                                aps[i].primary, aps[i].authmode);
             if (len > 0)
-                usb_serial_jtag_write_bytes((uint8_t *)line, len, pdMS_TO_TICKS(200));
+                usb_write_locked((uint8_t *)line, len, pdMS_TO_TICKS(200));
         }
         free(aps);
     }
 
 done:
-    usb_serial_jtag_write_bytes((uint8_t *)"SCAN_DONE\n", 10, pdMS_TO_TICKS(200));
+    usb_write_locked((uint8_t *)"SCAN_DONE\n", 10, pdMS_TO_TICKS(200));
     esp_wifi_stop();
     esp_wifi_set_mode(WIFI_MODE_NULL);
     esp_coex_preference_set(ESP_COEX_PREFER_BT);
@@ -222,8 +249,12 @@ static void handle_cfg_command(char *line)
         return;
     }
 
-    /* Expect "CFG:key=value" */
-    if (strncmp(line, "CFG:", 4) != 0) return;
+    /* Everything that is not the wizard's CFG: protocol goes to the shared
+     * command channel (TIME:, POS:, LOG_*, STATUS, BLE_*) */
+    if (strncmp(line, "CFG:", 4) != 0) {
+        ctrl_submit(line, CTRL_CH_USB);
+        return;
+    }
     char *kv = line + 4;
     char *eq = strchr(kv, '=');
     if (!eq) { cfg_reply("CFG_ERR:no equals\n"); return; }
@@ -254,7 +285,7 @@ static void handle_cfg_command(char *line)
 
 static void usb_config_rx_task(void *arg)
 {
-    char line[128];
+    char line[224];
     int  pos = 0;
 
     for (;;) {

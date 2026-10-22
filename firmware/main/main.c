@@ -27,7 +27,11 @@
 #include "temperature.h"
 #include "usb_stream.h"
 #include "bt_stream.h"
+#include "button.h"
+#include "ctrl.h"
 #include "display.h"
+#include "gnss.h"
+#include "sdlog.h"
 #include "wifi_manager.h"
 
 #if CONFIG_SNIFFER_STORE_HISTORY
@@ -92,6 +96,12 @@ static void console_init(void)
 #elif CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG
     esp_console_dev_usb_serial_jtag_config_t usbjtag_config = ESP_CONSOLE_DEV_USB_SERIAL_JTAG_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_usb_serial_jtag(&usbjtag_config, &repl_config, &repl));
+#else
+    /* No console UART (e.g. the UART pads are used by a GNSS module): keep
+     * the command registry so MQTT "command" topics still work. */
+    (void)repl_config;
+    esp_console_config_t console_config = ESP_CONSOLE_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_console_init(&console_config));
 #endif
 }
 
@@ -129,6 +139,10 @@ void app_main(void)
 
     initialize_spi();
 
+    /* Standalone SD logging (needs the SPI bus and the node ID) */
+    sdlog_init();
+    ctrl_init();
+
     // Make sure MQTT has registered its event handlers before Ethernet goes up
     mqtt_init();
 
@@ -149,6 +163,8 @@ void app_main(void)
 #endif
 
     display_init();
+    button_init();
+    gnss_init();
 
     /* Register commands */
 #if CONFIG_ENABLE_SD
@@ -174,8 +190,7 @@ void app_main(void)
      * run SCAN while the PHY is still in clean 2.4 GHz state.
      * After sniffer_autostart calls phy_11p_set(1,0), 2.4 GHz scanning
      * no longer works until a full chip reset. */
-    usb_serial_jtag_write_bytes((const uint8_t *)"BOOT_DONE\n", 10,
-                                pdMS_TO_TICKS(200));
+    usb_stream_send_record((const uint8_t *)"BOOT_DONE\n", 10);
 
     /* Pre-sniffer window: allow wizard to run SCAN (takes ~25 s on all channels).
      * Wait 3 s for a scan to start; if one does, wait up to 60 s for completion. */
@@ -205,7 +220,7 @@ void app_main(void)
     usb_stream_send_test_frame();
 
     // start console REPL
-    ESP_ERROR_CHECK(esp_console_start_repl(repl));
+    if (repl) ESP_ERROR_CHECK(esp_console_start_repl(repl));
 
     led_update();
 }

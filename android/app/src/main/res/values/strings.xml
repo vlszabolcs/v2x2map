@@ -277,4 +277,34 @@
         <item>N</item><item>NE</item><item>E</item><item>SE</item>
         <item>S</item><item>SW</item><item>W</item><item>NW</item>
     </string-array>
+
+    <!-- Receiver logs (SD card) -->
+    <string name="logs_title">Logs on receiver</string>
+    <string name="logs_not_connected">Connect the receiver via USB or Bluetooth to see its logs.</string>
+    <string name="logs_loading">Reading the list…</string>
+    <string name="logs_no_sd">No SD card in the receiver.</string>
+    <string name="logs_summary">%1$d files · %2$d MB free · via %3$s</string>
+    <string name="logs_action_download">Download</string>
+    <string name="logs_action_replay">Show on map</string>
+    <string name="logs_action_pcap">Export as PCAP (Wireshark)</string>
+    <string name="logs_action_share">Share raw log</string>
+    <string name="logs_action_delete_device">Delete on receiver</string>
+    <string name="logs_action_delete_local">Delete from phone</string>
+    <string name="logs_file_title">Log #%1$d</string>
+    <string name="logs_busy">A download is already running</string>
+    <string name="logs_replay_started">Loading the log onto the map…</string>
+    <string name="logs_replay_failed">Could not read the log</string>
+    <string name="logs_replay_done">%1$d frames from %2$s on the map</string>
+    <string name="logs_pcap_failed">PCAP export failed</string>
+    <string name="logs_pcap_done">PCAP written (%1$d frames)</string>
+    <string name="logs_forget_title">Forget this phone</string>
+    <string name="logs_forget_body">The receiver will no longer let this phone reconnect automatically after leaving its range. Pair again within the connect window (double press).</string>
+    <string name="logs_forget_done">Receiver forgot this phone</string>
+    <string name="logs_download_failed">Download of log #%1$d failed</string>
+    <string name="logs_download_done">Log #%1$d downloaded</string>
+    <string name="logs_recording">recording</string>
+    <string name="logs_only_local">only on phone</string>
+    <string name="logs_partial">partial</string>
+    <string name="logs_refresh">Refresh</string>
+    <string name="logs_download_all">Download all</string>
 </resources>

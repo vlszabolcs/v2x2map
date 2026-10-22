@@ -254,4 +254,34 @@
         <item>É</item><item>ÉK</item><item>K</item><item>DK</item>
         <item>D</item><item>DNy</item><item>Ny</item><item>ÉNy</item>
     </string-array>
+
+    <!-- Receiver logs (SD card) -->
+    <string name="logs_title">Naplók a vevőn</string>
+    <string name="logs_not_connected">Csatlakoztasd a vevőt USB-n vagy Bluetooth-on a naplók megtekintéséhez.</string>
+    <string name="logs_loading">Lista beolvasása…</string>
+    <string name="logs_no_sd">Nincs SD-kártya a vevőben.</string>
+    <string name="logs_summary">%1$d fájl · %2$d MB szabad · %3$s-n</string>
+    <string name="logs_action_download">Letöltés</string>
+    <string name="logs_action_replay">Megjelenítés a térképen</string>
+    <string name="logs_action_pcap">Exportálás PCAP-ként (Wireshark)</string>
+    <string name="logs_action_share">Nyers napló megosztása</string>
+    <string name="logs_action_delete_device">Törlés a vevőről</string>
+    <string name="logs_action_delete_local">Törlés a telefonról</string>
+    <string name="logs_file_title">Napló #%1$d</string>
+    <string name="logs_busy">Már fut egy letöltés</string>
+    <string name="logs_replay_started">A napló betöltése a térképre…</string>
+    <string name="logs_replay_failed">A napló nem olvasható</string>
+    <string name="logs_replay_done">%1$d frame a térképen (%2$s)</string>
+    <string name="logs_pcap_failed">A PCAP-export nem sikerült</string>
+    <string name="logs_pcap_done">PCAP kész (%1$d frame)</string>
+    <string name="logs_forget_title">Telefon elfelejtése</string>
+    <string name="logs_forget_body">A vevő hatótáv-vesztés után nem engedi vissza automatikusan ezt a telefont. Újra csatlakozni a csatlakozási ablakban lehet (dupla gombnyomás).</string>
+    <string name="logs_forget_done">A vevő elfelejtette a telefont</string>
+    <string name="logs_download_failed">A #%1$d napló letöltése nem sikerült</string>
+    <string name="logs_download_done">A #%1$d napló letöltve</string>
+    <string name="logs_recording">felvétel folyik</string>
+    <string name="logs_only_local">csak a telefonon</string>
+    <string name="logs_partial">részleges</string>
+    <string name="logs_refresh">Frissítés</string>
+    <string name="logs_download_all">Összes letöltése</string>
 </resources>

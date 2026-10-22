@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item android:id="@+id/action_refresh" android:title="@string/logs_refresh" app:showAsAction="never"/>
+    <item android:id="@+id/action_download_all" android:title="@string/logs_download_all" app:showAsAction="never"/>
+    <item android:id="@+id/action_forget" android:title="@string/logs_forget_title" app:showAsAction="never"/>
+</menu>

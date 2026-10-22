@@ -10,3 +10,5 @@ void display_init(void);
 void display_on_packet(const void *payload, uint32_t len, int8_t rssi);
 void display_set_sniffer(bool running, uint32_t freq_mhz);
 void display_set_ble_connected(bool connected);
+void display_toggle_power(void);   /* button: single press */
+void display_reset_stats(void);    /* button: long press */

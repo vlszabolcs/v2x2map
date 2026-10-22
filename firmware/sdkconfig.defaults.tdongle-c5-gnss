@@ -1,0 +1,16 @@
+# Add on top of sdkconfig.defaults.tdongle-c5 for a GNSS module on the UART0
+# pads (module TX → GPIO12, module RX ← GPIO11, 3V3, GND):
+#   idf.py -B build-tdongle-gnss -D SDKCONFIG=build-tdongle-gnss/sdkconfig \
+#     -D SDKCONFIG_DEFAULTS="sdkconfig;sdkconfig.defaults.tdongle-c5;sdkconfig.defaults.tdongle-c5-gnss" build
+CONFIG_ENABLE_GNSS=y
+CONFIG_GNSS_UART_NUM=1
+CONFIG_GNSS_RX_PIN=12
+CONFIG_GNSS_TX_PIN=11
+CONFIG_GNSS_BAUD=9600
+CONFIG_GNSS_UBLOX=y
+
+# The console UART shares those pads: no serial REPL in this build
+# (configuration stays available over USB CFG:/commands and BLE)
+# CONFIG_ESP_CONSOLE_UART_DEFAULT is not set
+# CONFIG_ESP_CONSOLE_UART is not set
+CONFIG_ESP_CONSOLE_NONE=y

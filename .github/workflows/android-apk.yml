@@ -27,9 +27,23 @@ jobs:
 
       # ubuntu-latest ships with the Android SDK preinstalled (ANDROID_HOME)
       - name: Build APKs
+        id: gradle
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug assembleRelease
+          set -o pipefail
+          ./gradlew --no-daemon assembleDebug assembleRelease 2>&1 | tee ../gradle-build.log
+
+      - name: Publish build log on failure
+        if: failure() && steps.gradle.outcome == 'failure'
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          grep -E "^e: |error:|FAILURE|What went wrong" -A3 gradle-build.log > gradle-errors.txt || true
+          gh release delete android-ci-log --yes --cleanup-tag 2>/dev/null || true
+          gh release create android-ci-log gradle-build.log gradle-errors.txt \
+            --target "${GITHUB_SHA}" --prerelease \
+            --title "Android CI log (${GITHUB_SHA::7})" --notes "Failed build log"
 
       - name: Collect APKs
         run: |

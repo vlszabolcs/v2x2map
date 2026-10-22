@@ -39,6 +39,8 @@ bool mqtt_connected;
  * activity indicator. Idle background reflects sniffer + BLE state; pulses
  * (sniffer-rx, ble-tx, usb-tx) briefly override it for visual feedback. */
 static bool s_ble_connected;
+static int  s_ble_mode;          /* ble_mode_t from bt_stream.h */
+static uint32_t s_blink_phase;   /* advances every 500 ms */
 static struct {
     uint8_t  r, g, b;
     bool     active;
@@ -245,12 +247,14 @@ static void apply_activity_led(void)
      * and whether a BLE client is hanging on. Mid brightness — pulses still
      * pop because they go to 0xFF. */
     uint8_t r = 0, g = 0, b = 0;
-    if (sniffer_running && s_ble_connected) {
-        r = 0x00; g = 0x40; b = 0x40;        /* teal — all good */
+    if (s_ble_connected) {
+        r = 0x00; g = 0x40; b = 0x40;        /* teal — client connected */
+    } else if (s_ble_mode == 1 /* OPEN */) {
+        if (s_blink_phase & 1) { b = 0x70; } /* blue blink — connectable */
+    } else if (s_ble_mode == 3 /* RECONNECT */ && (s_blink_phase % 6) == 0) {
+        b = 0x50;                            /* rare blue blink — waiting for client */
     } else if (sniffer_running) {
-        r = 0x60; g = 0x18; b = 0x00;        /* orange — capturing, no BLE */
-    } else if (s_ble_connected) {
-        r = 0x00; g = 0x00; b = 0x60;        /* blue — BLE only */
+        g = 0x30;                            /* green — standalone capture */
     } else {
         r = 0x20; g = 0x20; b = 0x20;        /* white — idle */
     }
@@ -287,6 +291,14 @@ void led_status_ble_connected(bool c)
     led_pulse(c ? 0x00 : 0xFF, c ? 0xFF : 0x00, c ? 0xFF : 0x00, 250);
 }
 
+void led_status_ble_mode(int mode)
+{
+    s_ble_mode = mode;
+    if (!s_pulse.active) apply_activity_led();
+}
+
+void led_flash_ble_off(void) { led_pulse(0xFF, 0x00, 0x00, 300); }
+
 void led_status_sniffer_running(bool r)
 {
     sniffer_running = r;
@@ -298,6 +310,7 @@ static void system_led_timer_cb(void *)
     /* No longer used for blinking — apply_activity_led drives LED 0
      * directly. We keep this around to refresh the idle colour periodically
      * in case some external write touched the strip. */
+    s_blink_phase++;
     if (!s_pulse.active) apply_activity_led();
 }
 
@@ -332,7 +345,7 @@ void led_update(void)
     /* Refresh idle background once per second as a fail-safe in case some
      * other writer touched the strip. apply_activity_led skips if a pulse
      * is currently active. */
-    esp_timer_start_periodic(system_led_timer_handle, 1000000);
+    esp_timer_start_periodic(system_led_timer_handle, 500000);
 }
 
 void led_init(void)

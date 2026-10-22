@@ -140,6 +140,36 @@ void register_unmount(void)
     ESP_ERROR_CHECK(esp_console_cmd_register(&cmd));
 }
 
+/* Mount at boot for standalone logging. Unlike the console "mount" command
+ * this never formats: a card with another filesystem is left untouched. */
+bool sdcard_mount_auto(void)
+{
+    if (card) return true;
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .max_files = 6,
+        .allocation_unit_size = 16 * 1024
+    };
+#if CONFIG_SNIFFER_SD_SPI_MODE
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
+    slot_config.gpio_cs = PIN_NUM_CS;
+    slot_config.host_id = host.slot;
+    esp_err_t ret = esp_vfs_fat_sdspi_mount(CONFIG_SNIFFER_MOUNT_POINT, &host, &slot_config, &mount_config, &card);
+#else
+    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+    esp_err_t ret = esp_vfs_fat_sdmmc_mount(CONFIG_SNIFFER_MOUNT_POINT, &host, &slot_config, &mount_config, &card);
+#endif
+    if (ret != ESP_OK) {
+        card = NULL;
+        ESP_LOGW(TAG, "SD auto-mount failed: %s", esp_err_to_name(ret));
+        return false;
+    }
+    ESP_LOGI(TAG, "SD card mounted at %s", CONFIG_SNIFFER_MOUNT_POINT);
+    return true;
+}
+
 void sdcard_register_commands(void)
 {
     register_mount();

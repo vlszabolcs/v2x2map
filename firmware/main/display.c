@@ -16,7 +16,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "bt_stream.h"
 #include "font5x7.h"
+#include "gnss.h"
+#include "sdlog.h"
 #include "spi.h"
 #if CONFIG_ENABLE_TEMPERATURE
 #include "temperature.h"
@@ -58,6 +61,8 @@ static spi_device_handle_t s_dev;
 static uint16_t *s_buf;
 static bool s_ready;
 static volatile bool s_on = true;
+static volatile bool s_power_req;
+static volatile bool s_redraw;
 
 static portMUX_TYPE s_lock = portMUX_INITIALIZER_UNLOCKED;
 static struct {
@@ -293,7 +298,7 @@ static void render(void)
     rate_roll((uint32_t)(now / 1000000));
     frames = s.frames; its = s.its_frames; sec = s.secured;
     rssi = s.last_rssi; last = s.last_us;
-    sniff = s.sniffing; freq = s.freq; ble = s.ble;
+    sniff = s.sniffing; freq = s.freq; ble = s.ble; (void)ble;
     for (int i = 0; i < RATE_BUCKETS; ++i) rate += s.buckets[i];
     for (int i = 0; i < STATION_SLOTS; ++i)
         if (s.st[i].seen_us && now - s.st[i].seen_us < (int64_t)STATION_WINDOW_MS * 1000) stations++;
@@ -338,7 +343,29 @@ static void render(void)
     seg_t l2[] = { { 2, 1, 1, C_WHITE, a }, { right_x(b, 1), 1, 1, C_GREY, b } };
     draw_band(48, 10, C_BLACK, l2, 2);
 
-    /* secured share + temperature */
+    /* line 5 alternates every 3 s: (A) GeoNetworking share + temperature,
+     * (B) SD log + position source */
+    bool page_b = ((now / 3000000) & 1) != 0;
+    if (page_b) {
+        sdlog_status_t sd;
+        sdlog_get_status(&sd);
+        if (sd.mounted && sd.total_bytes)
+            snprintf(a, sizeof(a), "SD %lu%% #%lu", (unsigned long)(100 - sd.free_bytes * 100 / sd.total_bytes),
+                     (unsigned long)sd.cur_id);
+        else
+            snprintf(a, sizeof(a), "SD --");
+        gnss_state_t g;
+        gnss_get(&g);
+        if (gnss_client_fresh())          snprintf(b, sizeof(b), "POS app");
+        else if (!g.enabled)              snprintf(b, sizeof(b), "no GNSS");
+        else if (g.asleep)                snprintf(b, sizeof(b), "GNSS zz");
+        else if (!g.present)              snprintf(b, sizeof(b), "GNSS --");
+        else if (g.fix >= 2)              snprintf(b, sizeof(b), "%uD %usat", g.fix, g.sats);
+        else                              snprintf(b, sizeof(b), "GNSS srch");
+        seg_t l3b[] = { { 2, 1, 1, C_GREY, a }, { right_x(b, 1), 1, 1, g.fix >= 2 || gnss_client_fresh() ? C_GREEN : C_GREY, b } };
+        draw_band(58, 10, C_BLACK, l3b, 2);
+        goto footer;
+    }
     if (its) snprintf(a, sizeof(a), "G5 %lu sec %lu%%", (unsigned long)its,
                       (unsigned long)(sec * 100 / its));
     else snprintf(a, sizeof(a), "G5 0");
@@ -354,12 +381,27 @@ static void render(void)
     seg_t l3[] = { { 2, 1, 1, C_GREY, a }, { right_x(b, 1), 1, 1, tcol, b } };
     draw_band(58, 10, C_BLACK, l3, 2);
 
-    /* footer: BLE + uptime */
+footer:;
+    /* footer: BLE mode + uptime */
+    char blt[24];
+    uint16_t blc = C_GREY;
+    switch (bt_stream_mode()) {
+    case BLE_MODE_OPEN: {
+        int left = bt_stream_window_left_s();
+        if (CONFIG_BLE_WINDOW_S == 0) snprintf(blt, sizeof(blt), "BLE open");
+        else snprintf(blt, sizeof(blt), "BLE %d:%02d", left / 60, left % 60);
+        blc = C_CYAN;
+        break;
+    }
+    case BLE_MODE_CONNECTED: snprintf(blt, sizeof(blt), "BLE linked"); blc = C_GREEN; break;
+    case BLE_MODE_RECONNECT: snprintf(blt, sizeof(blt), "BLE wait");   blc = C_YELLOW; break;
+    default:                 snprintf(blt, sizeof(blt), "BLE off");    break;
+    }
     uint32_t up = (uint32_t)(now / 1000000);
     snprintf(b, sizeof(b), "%lu:%02lu:%02lu", (unsigned long)(up / 3600),
              (unsigned long)((up / 60) % 60), (unsigned long)(up % 60));
     seg_t ft[] = {
-        { 2, 2, 1, ble ? C_GREEN : C_GREY, ble ? "BLE linked" : "BLE --" },
+        { 2, 2, 1, blc, blt },
         { right_x(b, 1), 2, 1, C_GREY, b },
     };
     draw_band(68, 12, C_DGREY, ft, 2);
@@ -371,35 +413,31 @@ static void display_task(void *arg)
     lcd_panel_init();
     set_power(true);
 
-    bool btn_prev = false;
-    int64_t btn_down = 0;
     int64_t next_draw = 0;
 
     for (;;) {
-#if CONFIG_LCD_BUTTON_PIN >= 0
-        bool pressed = gpio_get_level(CONFIG_LCD_BUTTON_PIN) == 0;
         int64_t now = esp_timer_get_time();
-        if (pressed && !btn_prev) btn_down = now;
-        if (!pressed && btn_prev) {
-            if (now - btn_down > 1500000) {
-                reset_stats();              /* long press: clear counters */
-                ESP_LOGI(TAG, "counters reset");
-            } else {
-                s_on = !s_on;               /* short press: screen on/off */
-                set_power(s_on);
-            }
-            next_draw = 0;
-        }
-        btn_prev = pressed;
-#else
-        int64_t now = esp_timer_get_time();
-#endif
+        if (s_redraw) { s_redraw = false; next_draw = 0; }
+        if (s_power_req) { s_power_req = false; set_power(s_on); }
         if (s_on && now >= next_draw) {
             render();
             next_draw = now + 500000;
         }
         vTaskDelay(pdMS_TO_TICKS(50));
     }
+}
+
+void display_toggle_power(void)
+{
+    s_on = !s_on;
+    s_power_req = true;
+    s_redraw = true;
+}
+
+void display_reset_stats(void)
+{
+    reset_stats();
+    s_redraw = true;
 }
 
 void display_init(void)
@@ -416,14 +454,6 @@ void display_init(void)
     };
     gpio_config(&out);
     gpio_set_level(CONFIG_LCD_PIN_BL, 1);
-#if CONFIG_LCD_BUTTON_PIN >= 0
-    gpio_config_t in = {
-        .pin_bit_mask = 1ULL << CONFIG_LCD_BUTTON_PIN,
-        .mode = GPIO_MODE_INPUT,
-        .pull_up_en = GPIO_PULLUP_ENABLE,
-    };
-    gpio_config(&in);
-#endif
 
     spi_device_interface_config_t dev = {
         .clock_speed_hz = LCD_CLOCK_HZ,
@@ -456,5 +486,7 @@ void display_on_packet(const void *payload, uint32_t len, int8_t rssi)
 }
 void display_set_sniffer(bool running, uint32_t freq_mhz) { (void)running; (void)freq_mhz; }
 void display_set_ble_connected(bool connected) { (void)connected; }
+void display_toggle_power(void) {}
+void display_reset_stats(void) {}
 
 #endif

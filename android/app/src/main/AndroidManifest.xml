@@ -71,6 +71,19 @@
             android:label="@string/settings_title"
             android:parentActivityName=".MainActivity"/>
         <activity
+            android:name=".DeviceLogsActivity"
+            android:label="@string/logs_title"
+            android:parentActivityName=".MainActivity"/>
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"/>
+        </provider>
+        <activity
             android:name=".AboutActivity"
             android:label="@string/about_title"
             android:parentActivityName=".SettingsActivity"/>

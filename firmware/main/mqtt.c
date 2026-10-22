@@ -10,6 +10,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_timer.h"
+#include "esp_netif.h"
 #include "mqtt_client.h"
 
 #include "cmd_sniffer.h"
@@ -313,9 +314,18 @@ void mqtt_handle_packet(sniffer_packet_info_t *packet)
     esp_mqtt_client_publish(client, packet_topic, (const char *)packet->payload, packet->length, 0, 0);
 }
 
+/* Wi-Fi station (wifi_manager) got an address: start MQTT once. The client
+ * reconnects on its own when the link comes back (also across the Wi-Fi
+ * windows of the cycle mode), so it is not torn down on disconnect. */
+static void wifi_ip_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
+{
+    if (event_id == IP_EVENT_STA_GOT_IP) mqtt_start();
+}
+
 void mqtt_init(void)
 {
     esp_event_handler_register(APP_EVENT_BASE, ESP_EVENT_ANY_ID, app_event_handler, NULL);
+    esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_ip_handler, NULL);
 
     esp_timer_create_args_t create_args = {
         .callback = publish_stats,

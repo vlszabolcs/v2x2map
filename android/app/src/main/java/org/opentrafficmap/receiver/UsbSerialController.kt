@@ -155,6 +155,13 @@ class UsbSerialController(
         }
     }
 
+    /** Send one command line to the receiver (appends the newline). */
+    fun writeLine(line: String): Boolean {
+        val p = port ?: return false
+        return try { p.write((line + "\n").toByteArray(Charsets.US_ASCII), 500); true }
+        catch (e: Exception) { Log.w(tag, "write failed", e); false }
+    }
+
     fun resetDevice() {
         try { port?.let { it.dtr = false; it.rts = true; Thread.sleep(100); it.rts = false } }
         catch (e: Exception) { Log.w(tag, "reset failed", e) }

@@ -65,6 +65,11 @@ class BluetoothController(
     @Volatile private var cachedDevice: BluetoothDevice? = null
     @Volatile private var cachedMtu: Int = 0
 
+    // ── command queue (Android allows one outstanding GATT operation) ────────
+    private val cmdQueue = ArrayDeque<String>()
+    @Volatile private var gattBusy = false
+    @Volatile private var ready = false
+
     // ── retry / watchdog state ─────────────────────────────────────────────
     private var retryCount  = 0
     private val cccdWatchdog: Runnable = Runnable {
@@ -118,7 +123,10 @@ class BluetoothController(
     @SuppressLint("MissingPermission")
     private fun doConnect(dev: BluetoothDevice) {
         try {
-            gatt = dev.connectGatt(context, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            // After a lost link use autoConnect: Android then waits in the
+            // background (no timeout) and connects as soon as the receiver's
+            // reconnect adverts are heard again.
+            gatt = dev.connectGatt(context, retryCount > 0, gattCallback, BluetoothDevice.TRANSPORT_LE)
         } catch (e: SecurityException) {
             onState(State.ERROR, "Connect verweigert: ${e.message}")
         }
@@ -214,6 +222,8 @@ class BluetoothController(
                 }
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Log.i(tag, "GATT disconnected status=$status")
+                ready = false
+                synchronized(cmdQueue) { cmdQueue.clear(); gattBusy = false }
                 cancelWatchdog()
                 try { g.close() } catch (_: Exception) {}
                 gatt = null
@@ -273,9 +283,14 @@ class BluetoothController(
             cancelWatchdog()
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 retryCount = 0   // reset backoff on clean connect
+                ready = true
                 onState(State.CONNECTED, g.device.name ?: g.device.address)
                 val cfg = g.getService(SERVICE_UUID)?.getCharacteristic(CONFIG_CHR_UUID)
-                if (cfg != null) g.readCharacteristic(cfg)
+                if (cfg != null) { gattBusy = true; g.readCharacteristic(cfg) }
+                // Identify as the known client so the receiver lets us back in
+                // after a range loss (its reconnect mode only accepts this id).
+                sendCommand("HELLO:" + Prefs.clientId(context))
+                sendCommand(DeviceLink.timeCommand())
             } else {
                 Log.w(tag, "CCCD write status=$status – retrying")
                 onState(State.SCANNING, reconnectLabel())
@@ -293,6 +308,7 @@ class BluetoothController(
         ) {
             if (status == BluetoothGatt.GATT_SUCCESS && characteristic.uuid == CONFIG_CHR_UUID)
                 characteristic.value?.let { decodeConfig(it)?.let { c -> onConfig?.invoke(c) } }
+            opDone()
         }
 
         override fun onCharacteristicRead(
@@ -303,6 +319,7 @@ class BluetoothController(
         ) {
             if (status == BluetoothGatt.GATT_SUCCESS && characteristic.uuid == CONFIG_CHR_UUID)
                 decodeConfig(value)?.let { onConfig?.invoke(it) }
+            opDone()
         }
 
         override fun onCharacteristicWrite(
@@ -310,8 +327,9 @@ class BluetoothController(
             characteristic: BluetoothGattCharacteristic,
             status: Int,
         ) {
-            if (status != BluetoothGatt.GATT_SUCCESS && characteristic.uuid == CONFIG_CHR_UUID)
-                Log.w(tag, "config write failed: status=$status")
+            if (status != BluetoothGatt.GATT_SUCCESS)
+                Log.w(tag, "write ${characteristic.uuid} failed: status=$status")
+            opDone()
         }
 
         @Suppress("DEPRECATION")
@@ -360,6 +378,56 @@ class BluetoothController(
         } catch (_: SecurityException) { false }
     }
 
+    // ── command channel ────────────────────────────────────────────────────
+
+    /** Queue a text command (see firmware ctrl.h); replies arrive on the
+     *  notify stream as ITSJ / ITSL records. Returns false when not ready. */
+    fun sendCommand(cmd: String): Boolean {
+        if (!ready || gatt == null) return false
+        synchronized(cmdQueue) {
+            // Keep only the newest position/time update queued
+            if (cmd.startsWith("POS:") || cmd.startsWith("TIME:"))
+                cmdQueue.removeAll { it.startsWith(cmd.substring(0, 4)) }
+            if (cmdQueue.size > 32) return false
+            cmdQueue.addLast(cmd)
+        }
+        mainHandler.post { pump() }
+        return true
+    }
+
+    private fun opDone() {
+        gattBusy = false
+        mainHandler.post { pump() }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun pump() {
+        val g = gatt ?: return
+        if (gattBusy || !ready) return
+        val cmd = synchronized(cmdQueue) { cmdQueue.removeFirstOrNull() } ?: return
+        val chr = g.getService(SERVICE_UUID)?.getCharacteristic(CTRL_CHR_UUID) ?: return
+        val bytes = cmd.toByteArray(Charsets.US_ASCII)
+        gattBusy = true
+        val ok = try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                g.writeCharacteristic(chr, bytes, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT) ==
+                    BluetoothGatt.GATT_SUCCESS
+            } else {
+                @Suppress("DEPRECATION") run {
+                    chr.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                    chr.value = bytes
+                    g.writeCharacteristic(chr)
+                }
+            }
+        } catch (_: SecurityException) { false }
+        if (!ok) {
+            // Busy stack: put it back and retry shortly
+            gattBusy = false
+            synchronized(cmdQueue) { cmdQueue.addFirst(cmd) }
+            mainHandler.postDelayed({ pump() }, 100)
+        }
+    }
+
     // ── helpers ────────────────────────────────────────────────────────────
 
     private fun decodeConfig(bytes: ByteArray): CycleConfig? {
@@ -394,6 +462,7 @@ class BluetoothController(
         val SERVICE_UUID:    UUID = UUID.fromString("b6e57e90-12d8-4a47-9b21-3f0000000001")
         val NOTIFY_CHR_UUID: UUID = UUID.fromString("b6e57e90-12d8-4a47-9b21-3f0000000002")
         val CONFIG_CHR_UUID: UUID = UUID.fromString("b6e57e90-12d8-4a47-9b21-3f0000000003")
+        val CTRL_CHR_UUID:   UUID = UUID.fromString("b6e57e90-12d8-4a47-9b21-3f0000000005")
         val CCCD_UUID:       UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 
         fun runtimePermissions(): Array<String> =

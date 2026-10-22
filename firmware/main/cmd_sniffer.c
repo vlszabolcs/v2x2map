@@ -24,7 +24,10 @@
 #include "mqtt.h"
 #include "usb_stream.h"
 #include "bt_stream.h"
+#include "clock.h"
 #include "display.h"
+#include "esp_timer.h"
+#include "sdlog.h"
 
 #include "cmd_sniffer.h"
 
@@ -81,8 +84,11 @@ static void wifi_sniffer_cb(void *recv_buf, wifi_promiscuous_pkt_type_t type)
     sniffer_packet_info_t packet_info;
     wifi_promiscuous_pkt_t *packet = (wifi_promiscuous_pkt_t *)recv_buf;
     /* prepare packet_info */
-    packet_info.seconds = packet->rx_ctrl.timestamp / 1000000U;
-    packet_info.microseconds = packet->rx_ctrl.timestamp % 1000000U;
+    /* Stamp with uptime now; converted to wall time in the sniffer task once
+     * the clock is known (GNSS / client) */
+    int64_t up = esp_timer_get_time();
+    packet_info.seconds = (uint32_t)(up / 1000000);
+    packet_info.microseconds = (uint32_t)(up % 1000000);
     packet_info.rssi = packet->rx_ctrl.rssi;
 
 #if CONFIG_SOC_WIFI_HE_SUPPORT
@@ -109,10 +115,10 @@ static esp_err_t eth_sniffer_cb(esp_eth_handle_t eth_handle, uint8_t *buffer, ui
 
     // ESP32 Ethernet MAC provides hardware time stamping for incoming frames in its Linked List Descriptors (see TMR, section 10.8.2).
     // However, this information is not currently accessible via Ethernet driver => do at least software time stamping
-    gettimeofday(&tv_now, NULL);
-
-    packet_info.seconds = tv_now.tv_sec;
-    packet_info.microseconds = tv_now.tv_usec;
+    (void)tv_now;
+    int64_t up = esp_timer_get_time();
+    packet_info.seconds = (uint32_t)(up / 1000000);
+    packet_info.microseconds = (uint32_t)(up % 1000000);
     packet_info.length = length;
     packet_info.rssi = 0;
 
@@ -132,6 +138,12 @@ static void sniffer_task(void *)
         if (xQueueReceive(work_queue, &packet_info, pdMS_TO_TICKS(SNIFFER_PROCESS_PACKET_TIMEOUT_MS)) != pdTRUE) {
             continue;
         }
+        {
+            int64_t up = (int64_t)packet_info.seconds * 1000000LL + packet_info.microseconds;
+            clock_stamp(up, &packet_info.seconds, &packet_info.microseconds);
+        }
+        sdlog_write_frame(packet_info.seconds, packet_info.microseconds,
+                          packet_info.payload, (uint16_t)packet_info.length);
         if (write_pcap && packet_capture(packet_info.payload, packet_info.length, packet_info.seconds,
                                          packet_info.microseconds) != ESP_OK) {
             ESP_LOGW(TAG, "save captured packet failed");

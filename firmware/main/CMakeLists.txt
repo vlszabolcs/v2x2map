@@ -17,6 +17,11 @@ idf_component_register(
         "wifi_manager.c"
         "apa102.c"
         "display.c"
+        "button.c"
+        "clock.c"
+        "ctrl.c"
+        "gnss.c"
+        "sdlog.c"
     PRIV_REQUIRES
         app_trace
         app_update
@@ -27,6 +32,7 @@ idf_component_register(
         esp_driver_gpio
         esp_driver_spi
         esp_driver_tsens
+        esp_driver_uart
         esp_eth
         esp_https_ota
         esp_netif

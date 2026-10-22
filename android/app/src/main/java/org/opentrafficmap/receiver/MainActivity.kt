@@ -72,6 +72,8 @@ class MainActivity : AppCompatActivity() {
     private var btState = BluetoothController.State.IDLE
     private var btInfo: String? = null
     private var recStartMs = 0L
+    private var lastPosSentMs = 0L
+    private var replayTrack: Polyline? = null
 
     // Own GPS track
     private val ownTrackPoints = mutableListOf<GeoPoint>()
@@ -114,6 +116,12 @@ class MainActivity : AppCompatActivity() {
             val loc = result.lastLocation ?: return
             lastSpeedMps = if (loc.hasSpeed()) loc.speed else 0f
             lastLocation = loc
+            // The phone is the receiver's position source while connected
+            val now = System.currentTimeMillis()
+            if (DeviceLink.connected && now - lastPosSentMs >= 1000) {
+                lastPosSentMs = now
+                DeviceLink.sendAll(DeviceLink.positionCommand(loc))
+            }
             if (followEnabled) followLocation(loc)
             if (ownTrackEnabled && ::binding.isInitialized)
                 runOnUiThread { addOwnTrackPoint(GeoPoint(loc.latitude, loc.longitude)) }
@@ -188,6 +196,10 @@ class MainActivity : AppCompatActivity() {
         locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(this), binding.map)
         binding.map.overlays.add(locationOverlay)
 
+        reader.onJson = DeviceLink::dispatchJson
+        reader.onLogChunk = DeviceLink::dispatchChunk
+        LogReplay.listener = { f -> runOnUiThread { replayLog(f) } }
+
         adapter = FrameLogAdapter(this) { f -> FrameDetailSheet.show(this, f) }
         binding.log.layoutManager = LinearLayoutManager(this)
         binding.log.adapter = adapter
@@ -249,10 +261,17 @@ class MainActivity : AppCompatActivity() {
         val labels = arrayOf(
             getString(if (usbOn) R.string.conn_action_usb_disconnect else R.string.conn_action_usb_connect),
             getString(if (btOn)  R.string.conn_action_bt_disconnect  else R.string.conn_action_bt_connect),
+            getString(R.string.logs_title),
         )
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.conn_choose_title)
-            .setItems(labels) { _, which -> if (which == 0) toggleUsb() else toggleBt() }
+            .setItems(labels) { _, which ->
+                when (which) {
+                    0 -> toggleUsb()
+                    1 -> toggleBt()
+                    else -> startActivity(Intent(this, DeviceLogsActivity::class.java))
+                }
+            }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
@@ -314,6 +333,7 @@ class MainActivity : AppCompatActivity() {
         if (!::binding.isInitialized) return
         binding.map.onResume()
         applyKeepScreenOn()
+        LogReplay.pending?.let { LogReplay.pending = null; replayLog(it) }
         if (followEnabled || ownTrackEnabled || compassMode) ensureLocation()
     }
 
@@ -333,6 +353,9 @@ class MainActivity : AppCompatActivity() {
         if (::geiger.isInitialized) geiger.stop()
         SettingsBus.liveRecorder = null
         SettingsBus.liveBtController = null
+        LogReplay.listener = null
+        DeviceLink.usbSender = null
+        DeviceLink.bleSender = null
         mainHandler.removeCallbacksAndMessages(null)
     }
 
@@ -558,8 +581,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onUsbState(state: UsbSerialController.State, info: String?) = runOnUiThread {
+        val wasConnected = usbState == UsbSerialController.State.CONNECTED
         usbState = state
         usbInfo  = info
+        if (state == UsbSerialController.State.CONNECTED) {
+            DeviceLink.usbSender = { cmd -> usb?.writeLine(cmd) ?: false }
+            if (!wasConnected) {
+                DeviceLink.usbSender?.invoke(DeviceLink.timeCommand())
+                ensureLocation()
+            }
+        } else {
+            DeviceLink.usbSender = null
+        }
         renderConnPill()
     }
 
@@ -590,8 +623,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun onBtState(state: BluetoothController.State, info: String?) = runOnUiThread {
+        val wasConnected = btState == BluetoothController.State.CONNECTED
         btState = state
         btInfo  = info
+        if (state == BluetoothController.State.CONNECTED) {
+            DeviceLink.bleSender = { cmd -> bt?.sendCommand(cmd) ?: false }
+            if (!wasConnected) ensureLocation()
+        } else {
+            DeviceLink.bleSender = null
+        }
         renderConnPill()
     }
 
@@ -722,7 +762,7 @@ class MainActivity : AppCompatActivity() {
         runOnUiThread { handleFrames(frames) }
     }
 
-    private fun handleFrames(frames: List<Frame>) {
+    private fun handleFrames(frames: List<Frame>, live: Boolean = true) {
         frames.lastOrNull()?.let { f ->
             val dist = adapter.formatDistance(f.latLon, lastLocation)
             val what = adapter.titleFor(f.msgType, f)
@@ -734,11 +774,13 @@ class MainActivity : AppCompatActivity() {
             totalFrames++
             pendingLogFrames.add(f)          // buffered; drains in logRefresh
             markers.add(f)
-            geiger.click(f.msgType)
-            if (f.msgType.name in mqttFilter) mqttBridges.forEach { it.publish(f.payload) }
-            if (recorder.isRecording) recorder.append(f)
-            rateWindow.add(System.currentTimeMillis())
-            binding.activityBars.hit()
+            if (live) {
+                geiger.click(f.msgType)
+                if (f.msgType.name in mqttFilter) mqttBridges.forEach { it.publish(f.payload) }
+                if (recorder.isRecording) recorder.append(f)
+                rateWindow.add(System.currentTimeMillis())
+                binding.activityBars.hit()
+            }
 
             if (f.msgType == ItsG5Decoder.MsgType.SPATEM && f.latLon != null) {
                 val (lat, lon) = f.latLon
@@ -818,6 +860,37 @@ class MainActivity : AppCompatActivity() {
             ReceiverForegroundService.instance?.updateStats(totalFrames.toInt(), rate)
             mainHandler.postDelayed(this, 1_000)
         }
+    }
+
+    // ------------------------------------------------------------ Log replay
+
+    /** Load a log downloaded from the receiver's SD card onto the map. */
+    private fun replayLog(f: java.io.File) {
+        if (!::binding.isInitialized) { LogReplay.pending = f; return }
+        Thread {
+            val parsed = try { LogTools.parse(f) } catch (e: Exception) { null }
+            runOnUiThread {
+                if (parsed == null) { toast(getString(R.string.logs_replay_failed)); return@runOnUiThread }
+                parsed.frames.chunked(500).forEach { handleFrames(it, live = false) }
+                replayTrack?.let { binding.map.overlays.remove(it) }
+                val pts = parsed.track.map { GeoPoint(it.first, it.second) }
+                if (pts.size >= 2) {
+                    replayTrack = Polyline().also { poly ->
+                        poly.outlinePaint.color = ContextCompat.getColor(this, R.color.type_denm)
+                        poly.outlinePaint.strokeWidth = 6f
+                        poly.setPoints(pts)
+                        binding.map.overlays.add(0, poly)
+                    }
+                }
+                val box = (pts.ifEmpty { parsed.frames.mapNotNull { fr -> fr.latLon?.let { GeoPoint(it.first, it.second) } } })
+                if (box.isNotEmpty()) {
+                    binding.map.zoomToBoundingBox(
+                        org.osmdroid.util.BoundingBox.fromGeoPointsSafe(box).increaseByScale(1.2f), true)
+                }
+                binding.map.invalidate()
+                toast(getString(R.string.logs_replay_done, parsed.frames.size, f.name))
+            }
+        }.start()
     }
 
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()

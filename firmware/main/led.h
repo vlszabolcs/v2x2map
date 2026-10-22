@@ -19,3 +19,5 @@ void led_pulse_usb_tx(void);       /* cyan flash — USB frame written      */
 
 void led_status_ble_connected(bool connected);
 void led_status_sniffer_running(bool running);
+void led_status_ble_mode(int mode);   /* ble_mode_t */
+void led_flash_ble_off(void);         /* short red flash */

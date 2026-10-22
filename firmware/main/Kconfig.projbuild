@@ -39,6 +39,21 @@ menu "Example Configuration"
                 on top of the 'ledbrightness' setting.
     endif
 
+    config BUTTON_PIN
+        int "User button GPIO (-1 = none)"
+        default 28
+        help
+            BOOT button. Single press: display on/off. Double press: BLE
+            connect window on / BLE off. Long press: reset display counters.
+
+    config BLE_WINDOW_S
+        int "BLE connect window after power-on / double press (s, 0 = always on)"
+        range 0 3600
+        default 60 if BOARD_LILYGO_T_DONGLE_C5
+        default 0
+        help
+            0 keeps the original V2X2MAP behaviour: BLE always connectable.
+
     config ENABLE_LCD
         bool "Enable ST7735 status display (0.96\" 80x160)"
         default y if BOARD_LILYGO_T_DONGLE_C5
@@ -73,9 +88,6 @@ menu "Example Configuration"
         config LCD_Y_OFFSET
             int "LCD row offset (landscape)"
             default 26
-        config LCD_BUTTON_PIN
-            int "Button GPIO for display on/off (-1 = none)"
-            default 28
     endif
 
     config HW_VARIANT
@@ -220,6 +232,54 @@ menu "Example Configuration"
         default 26
         help
             GPIO number where the LED strip is connected
+
+    config SDLOG_ENABLE
+        bool "Standalone SD-card logging"
+        depends on ENABLE_SD
+        default y if BOARD_LILYGO_T_DONGLE_C5
+        default n
+        help
+            Mount the SD card at boot and log every captured frame plus time
+            and position records to /sdcard/its/NNNNNNNN.ITS. Logs can be
+            listed and downloaded over USB and BLE (LOG_LIST / LOG_GET).
+
+    if SDLOG_ENABLE
+        config SDLOG_ROTATE_MB
+            int "Start a new log file after (MB)"
+            default 16
+        config SDLOG_ROTATE_MIN
+            int "Start a new log file after (minutes)"
+            default 60
+        config SDLOG_MIN_FREE_MB
+            int "Keep at least this much free space (MB, oldest files deleted)"
+            default 64
+    endif
+
+    config ENABLE_GNSS
+        bool "GNSS module on a UART (NMEA)"
+        default n
+        help
+            Adds position and UTC time to the SD log when no client supplies
+            them. On the T-Dongle-C5 the UART0 pads (GPIO11/12) are used, so
+            the serial console must be disabled (see sdkconfig.defaults.tdongle-c5-gnss).
+
+    if ENABLE_GNSS
+        config GNSS_UART_NUM
+            int "UART port"
+            default 1
+        config GNSS_RX_PIN
+            int "ESP RX GPIO (module TX)"
+            default 12
+        config GNSS_TX_PIN
+            int "ESP TX GPIO (module RX)"
+            default 11
+        config GNSS_BAUD
+            int "Baud rate"
+            default 9600
+        config GNSS_UBLOX
+            bool "u-blox module (sleep via UBX-RXM-PMREQ while a client gives position)"
+            default y
+    endif
 
     config ENABLE_TEMPERATURE
         bool "Enable temperature reporting"

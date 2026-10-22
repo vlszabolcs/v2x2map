@@ -19,8 +19,13 @@
 #include "nvs_flash.h"
 #include "driver/usb_serial_jtag.h"
 
+#include "esp_timer.h"
+
 #include "cmd_sniffer.h"
+#include "ctrl.h"
+#include "display.h"
 #include "led.h"
+#include "usb_stream.h"
 
 /* Private NimBLE API: forces the controller's public address. Used here so
  * old Android stacks (Galaxy S6 / AOSP) accept the advertiser — they ignore
@@ -71,6 +76,12 @@ static const ble_uuid128_t MAC_UUID = BLE_UUID128_INIT(
     0x04, 0x00, 0x00, 0x00, 0x00, 0x3f, 0x21, 0x9b,
     0x47, 0x4a, 0xd8, 0x12, 0x90, 0x7e, 0xe5, 0xb6);
 
+/* Write-only command channel (same text protocol as USB, see ctrl.h).
+ * Replies come back as ITSJ / ITSL records on the notify characteristic. */
+static const ble_uuid128_t CTRL_UUID = BLE_UUID128_INIT(
+    0x05, 0x00, 0x00, 0x00, 0x00, 0x3f, 0x21, 0x9b,
+    0x47, 0x4a, 0xd8, 0x12, 0x90, 0x7e, 0xe5, 0xb6);
+
 typedef struct {
     uint16_t total_len;        /* HEADER_LEN + payload_len */
     uint8_t  data[];           /* preformatted ITS5 frame */
@@ -85,7 +96,7 @@ static bool           s_ready;
 static QueueHandle_t  s_queue;
 
 /* Coex cycle parameters, runtime-tunable via the config characteristic.
- * Values are milliseconds; volatile because read by coex_window_task and
+ * Values are milliseconds; volatile because read by radio_task and
  * written from the GATT access callback.
  *   0..1: discovery cycle (no client connected)
  *   2..3: connected cycle  (client present)
@@ -129,7 +140,7 @@ static void dbg_printf(const char *fmt, ...)
     if (n > (int)sizeof(line) - 2) n = sizeof(line) - 2;
     line[n++] = '\r';
     line[n++] = '\n';
-    usb_serial_jtag_write_bytes((const uint8_t *)line, n, pdMS_TO_TICKS(20));
+    usb_stream_send_record((const uint8_t *)line, n);
 }
 
 static int chr_access_cb(uint16_t conn_handle, uint16_t attr_handle,
@@ -200,6 +211,21 @@ static int mac_access_cb(uint16_t conn_handle, uint16_t attr_handle,
 }
 
 static uint16_t s_mac_val_handle;
+static uint16_t s_ctrl_val_handle;
+
+static int ctrl_access_cb(uint16_t conn_handle, uint16_t attr_handle,
+                          struct ble_gatt_access_ctxt *ctxt, void *arg)
+{
+    (void)conn_handle; (void)attr_handle; (void)arg;
+    if (ctxt->op != BLE_GATT_ACCESS_OP_WRITE_CHR) return BLE_ATT_ERR_UNLIKELY;
+    char line[200];
+    uint16_t n = 0;
+    if (ble_hs_mbuf_to_flat(ctxt->om, line, sizeof(line) - 1, &n) != 0) n = 0;
+    while (n > 0 && (line[n - 1] == '\n' || line[n - 1] == '\r')) n--;
+    line[n] = '\0';
+    if (n) ctrl_submit(line, CTRL_CH_BLE);
+    return 0;
+}
 
 static const struct ble_gatt_chr_def chr_defs[] = {
     {
@@ -219,6 +245,12 @@ static const struct ble_gatt_chr_def chr_defs[] = {
         .access_cb  = mac_access_cb,
         .flags      = BLE_GATT_CHR_F_READ,
         .val_handle = &s_mac_val_handle,
+    },
+    {
+        .uuid       = &CTRL_UUID.u,
+        .access_cb  = ctrl_access_cb,
+        .flags      = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
+        .val_handle = &s_ctrl_val_handle,
     },
     { 0 },
 };
@@ -257,6 +289,62 @@ static const struct ble_gatt_svc_def svc_defs[] = {
     },
     { 0 },
 };
+
+/* ── operating-mode state ─────────────────────────────────────────────── */
+
+static volatile ble_mode_t s_mode = BLE_MODE_OPEN;
+static volatile uint32_t   s_mode_gen;          /* bumps on every change */
+static volatile int64_t    s_mode_since_us;
+static volatile int64_t    s_open_until_us;
+static volatile int64_t    s_bulk_until_us;
+static volatile bool       s_user_off;          /* we dropped the link on purpose */
+static volatile bool       s_scan_hold;         /* Wi-Fi scan owns the radio */
+static volatile bool       s_conn_hello_ok;     /* current client sent a known HELLO */
+static volatile bool       s_conn_needs_hello;  /* connected during RECONNECT */
+static volatile int64_t    s_hello_deadline_us;
+static char                s_known_client[40];
+
+#define OPEN_WINDOW_US   ((int64_t)CONFIG_BLE_WINDOW_S * 1000000LL)
+#define RECONNECT_MAX_US (60LL * 60LL * 1000000LL)
+
+static void set_mode(ble_mode_t m)
+{
+    if (s_mode == m) return;
+    s_mode = m;
+    s_mode_since_us = esp_timer_get_time();
+    s_mode_gen++;
+    led_status_ble_mode((int)m);
+    display_set_ble_connected(m == BLE_MODE_CONNECTED);
+}
+
+static void open_window(void)
+{
+    s_open_until_us = esp_timer_get_time() + OPEN_WINDOW_US;
+    s_user_off = false;
+    if (s_mode != BLE_MODE_CONNECTED) set_mode(BLE_MODE_OPEN);
+    s_mode_gen++;
+}
+
+static void known_client_load(void)
+{
+    nvs_handle_t h;
+    if (nvs_open(CFG_NS, NVS_READONLY, &h) != ESP_OK) return;
+    size_t sz = sizeof(s_known_client);
+    if (nvs_get_str(h, "client", s_known_client, &sz) != ESP_OK) s_known_client[0] = '\0';
+    nvs_close(h);
+}
+
+static void known_client_save(const char *id)
+{
+    strncpy(s_known_client, id, sizeof(s_known_client) - 1);
+    s_known_client[sizeof(s_known_client) - 1] = '\0';
+    nvs_handle_t h;
+    if (nvs_open(CFG_NS, NVS_READWRITE, &h) != ESP_OK) return;
+    if (id[0]) nvs_set_str(h, "client", s_known_client);
+    else       nvs_erase_key(h, "client");
+    nvs_commit(h);
+    nvs_close(h);
+}
 
 static void start_advertising(void)
 {
@@ -309,6 +397,11 @@ static int gap_event_cb(struct ble_gap_event *ev, void *arg)
         if (ev->connect.status == 0) {
             s_conn_handle = ev->connect.conn_handle;
             s_notify_enabled = false;
+            s_conn_hello_ok = false;
+            /* During RECONNECT only the remembered client may stay */
+            s_conn_needs_hello = (s_mode == BLE_MODE_RECONNECT) && s_known_client[0];
+            s_hello_deadline_us = esp_timer_get_time() + 5000000LL;
+            set_mode(BLE_MODE_CONNECTED);
             led_status_ble_connected(true);
             ESP_LOGI(TAG, "connect: handle=%d", s_conn_handle);
             /* Stretch the supervision timeout so the coex sniff windows (where
@@ -332,16 +425,30 @@ static int gap_event_cb(struct ble_gap_event *ev, void *arg)
             ble_gap_update_params(s_conn_handle, &up);
         } else {
             ESP_LOGW(TAG, "connect failed status=%d", ev->connect.status);
-            start_advertising();
         }
         break;
-    case BLE_GAP_EVENT_DISCONNECT:
-        ESP_LOGI(TAG, "disconnect: reason=0x%x", ev->disconnect.reason);
+    case BLE_GAP_EVENT_DISCONNECT: {
+        int reason = ev->disconnect.reason;
+        ESP_LOGI(TAG, "disconnect: reason=0x%x", reason);
+        dbg_printf("[bt] disconnect reason=0x%x", reason);
         s_conn_handle = BLE_HS_CONN_HANDLE_NONE;
         s_notify_enabled = false;
         led_status_ble_connected(false);
-        start_advertising();
+        bool by_client = (reason == BLE_HS_HCI_ERR(BLE_ERR_REM_USER_CONN_TERM));
+        if (s_user_off || by_client) {
+            /* Deliberate disconnect (double press / BLE_OFF / app "disconnect") */
+            set_mode(BLE_MODE_OFF);
+        } else if (s_conn_hello_ok && s_known_client[0]) {
+            /* Lost by range: wait for the known client to come back */
+            set_mode(BLE_MODE_RECONNECT);
+        } else {
+            /* Client without HELLO (older app): a normal connect window */
+            open_window();
+        }
+        s_conn_hello_ok = false;
+        s_conn_needs_hello = false;
         break;
+    }
     case BLE_GAP_EVENT_SUBSCRIBE:
         if (ev->subscribe.attr_handle == s_chr_val_handle) {
             s_notify_enabled = ev->subscribe.cur_notify;
@@ -385,7 +492,7 @@ static void on_sync(void)
              addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
     dbg_printf("[bt] addr=%02X:%02X:%02X:%02X:%02X:%02X",
                addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
-    start_advertising();
+    s_mode_gen++;   /* radio task (re)starts advertising as the mode requires */
 }
 
 static void on_reset(int reason)
@@ -424,9 +531,9 @@ static void host_task(void *param)
  * window opens; while sniffing, the BLE link is starved (clients usually
  * survive the supervision-timeout window with a fresh adv arriving in time).
  */
-/* Sleep in short chunks so the loop notices a BLE link state change within
- * CHUNK_MS instead of holding the radio for the full sniff window. Returns
- * early when the connection state flips relative to `was_connected`.
+/* The radio task sleeps in short chunks so it notices a mode change (connect,
+ * disconnect, double press) within COEX_CHUNK_MS instead of holding the radio
+ * for the full sniff window.
  *
  * Why this matters: in wardriving mode (sniff 8000 ms / BLE 400 ms), a
  * disconnect mid-sniff would otherwise leave the phone scanning blind for
@@ -434,78 +541,122 @@ static void host_task(void *param)
  * mid-sniff would starve the link past the host supervision timeout (~5 s
  * on Android default) and trigger an immediate reconnect-loop. */
 #define COEX_CHUNK_MS 200
-/* Connected-mode interleaving (see coex_window_task): max radio-hold per
+/* Connected-mode interleaving (see radio_task): max radio-hold per
  * slice and the BLE breathing gap between slices. */
 #define CONN_SNIFF_SLICE_MS 350
 #define CONN_SNIFF_GAP_MS   60
-static void chunked_delay(uint32_t total_ms, bool was_connected)
+
+static bool mode_changed(uint32_t gen) { return gen != s_mode_gen; }
+
+/* Sleep in COEX_CHUNK_MS steps; return early when the mode changes. */
+static void mode_delay(uint32_t total_ms, uint32_t gen)
 {
     uint32_t left = total_ms;
-    while (left > 0) {
+    while (left > 0 && !mode_changed(gen)) {
         uint32_t step = (left > COEX_CHUNK_MS) ? COEX_CHUNK_MS : left;
         vTaskDelay(pdMS_TO_TICKS(step));
         left -= step;
-        bool now = (s_conn_handle != BLE_HS_CONN_HANDLE_NONE);
-        if (now != was_connected) return;
     }
 }
 
-static void coex_window_task(void *arg)
+static void adv_ensure(bool on)
+{
+    if (s_scan_hold) return;
+    bool active = ble_gap_adv_active();
+    if (on && !active) start_advertising();
+    else if (!on && active) ble_gap_adv_stop();
+}
+
+/* Interval between short advert windows while waiting for the known client */
+static uint32_t reconnect_period_ms(int64_t elapsed_us)
+{
+    if (elapsed_us <  2LL * 60 * 1000000) return 2000;
+    if (elapsed_us < 15LL * 60 * 1000000) return 10000;
+    return 30000;
+}
+
+static void radio_task(void *arg)
 {
     (void)arg;
-    /* Boot-time: give BLE the radio first so a user has a chance to
-     * connect before the sniffer takes over. */
-    sniffer_pause();
-    chunked_delay(CYC_DISC_BLE, false);
-    int n = 0;
+    esp_coex_prefer_t pref = ESP_COEX_PREFER_BT;
     for (;;) {
-        bool connected = (s_conn_handle != BLE_HS_CONN_HANDLE_NONE);
-        /* Freshly connected but the client hasn't subscribed to notifications
-         * yet: keep the radio on BLE (skip sniffing) so the link can settle —
-         * in particular so the 5 s supervision-timeout parameter update can
-         * complete — before we start starving the radio. Otherwise a large
-         * CYC_CONN_SNIFF window trips the initial (short ~1.5 s) supervision
-         * timeout and the connection drops right after connect, before the 5 s
-         * value ever takes effect. Once the client subscribes, the normal
-         * connected duty cycle takes over. */
-        if (connected && !s_notify_enabled) {
-            chunked_delay(CYC_CONN_BLE, connected);
-            continue;
+        int64_t now = esp_timer_get_time();
+        uint32_t gen = s_mode_gen;
+
+        /* Expiries */
+        if (CONFIG_BLE_WINDOW_S > 0 && s_mode == BLE_MODE_OPEN && now > s_open_until_us) {
+            set_mode(BLE_MODE_OFF); continue;
         }
-        uint16_t sniff_ms = connected ? CYC_CONN_SNIFF : CYC_DISC_SNIFF;
-        uint16_t ble_ms   = connected ? CYC_CONN_BLE   : CYC_DISC_BLE;
-        sniffer_resume();
-        if (connected) {
-            /* Interleaved sniffing while a client is connected: never hold the
-             * radio away from BLE for more than ~350 ms at a stretch. Field
-             * evidence 2026-07-10: with connSniff 500/600 the iPhone link died
-             * with CBError #6 (supervision timeout) four times in 30 s at
-             * RSSI -47 dBm under ~15 pkt/s ITS load — pure BLE starvation, not
-             * range. Short 60 ms micro-gaps mid-window give the link its
-             * connection events (~30 ms interval on iOS) while keeping the
-             * sniff duty at ≈85 %. The window is split evenly so the last
-             * slice isn't a starving remainder. */
+        if (s_mode == BLE_MODE_RECONNECT && now - s_mode_since_us > RECONNECT_MAX_US) {
+            set_mode(BLE_MODE_OFF); continue;
+        }
+        if (s_mode == BLE_MODE_CONNECTED && s_conn_needs_hello && !s_conn_hello_ok &&
+            now > s_hello_deadline_us && s_conn_handle != BLE_HS_CONN_HANDLE_NONE) {
+            dbg_printf("[bt] unknown client during reconnect window – dropping");
+            s_conn_needs_hello = false;
+            ble_gap_terminate(s_conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+        }
+
+        esp_coex_prefer_t want = (s_mode == BLE_MODE_OFF) ? ESP_COEX_PREFER_WIFI : ESP_COEX_PREFER_BT;
+        if (want != pref) { esp_coex_preference_set(want); pref = want; }
+
+        switch (s_mode) {
+        case BLE_MODE_OFF:
+            adv_ensure(false);
+            sniffer_resume();
+            mode_delay(500, gen);
+            break;
+
+        case BLE_MODE_OPEN:
+            /* Connectable window: sniff most of the time, give BLE regular slots */
+            adv_ensure(true);
+            sniffer_resume();
+            mode_delay(CYC_DISC_SNIFF, gen);
+            if (mode_changed(gen)) break;
+            sniffer_pause();
+            mode_delay(CYC_DISC_BLE, gen);
+            break;
+
+        case BLE_MODE_RECONNECT: {
+            adv_ensure(true);
+            uint32_t period = reconnect_period_ms(now - s_mode_since_us);
+            sniffer_resume();
+            mode_delay(period - 300, gen);
+            if (mode_changed(gen)) break;
+            sniffer_pause();
+            mode_delay(300, gen);
+            break;
+        }
+
+        case BLE_MODE_CONNECTED: {
+            adv_ensure(false);
+            /* Freshly connected and not yet subscribed, or a log download in
+             * progress: keep the radio on BLE. */
+            if (!s_notify_enabled || now < s_bulk_until_us) {
+                sniffer_pause();
+                mode_delay(CYC_CONN_BLE, gen);
+                break;
+            }
+            /* Interleaved sniffing: never hold the radio away from BLE for more
+             * than ~350 ms (iOS supervision timeout ~700 ms in practice). */
+            uint32_t sniff_ms = CYC_CONN_SNIFF;
             uint32_t nslices = (sniff_ms + CONN_SNIFF_SLICE_MS - 1) / CONN_SNIFF_SLICE_MS;
             if (nslices < 1) nslices = 1;
             uint32_t slice = sniff_ms / nslices;
-            for (uint32_t i = 0; i < nslices; i++) {
-                chunked_delay(slice, connected);
-                if ((s_conn_handle != BLE_HS_CONN_HANDLE_NONE) != connected) break;
-                if (i + 1 == nslices) break;
+            sniffer_resume();
+            for (uint32_t i = 0; i < nslices && !mode_changed(gen); i++) {
+                mode_delay(slice, gen);
+                if (i + 1 == nslices || mode_changed(gen)) break;
                 sniffer_pause();
                 vTaskDelay(pdMS_TO_TICKS(CONN_SNIFF_GAP_MS));
-                if ((s_conn_handle != BLE_HS_CONN_HANDLE_NONE) != connected) break;
                 sniffer_resume();
             }
-        } else {
-            chunked_delay(sniff_ms, connected);
+            if (mode_changed(gen)) break;
+            sniffer_pause();
+            mode_delay(CYC_CONN_BLE, gen);
+            break;
         }
-        sniffer_pause();
-        if ((n++ & 0xF) == 0) {
-            dbg_printf("[bt] cycle %s: sniff=%u ble=%u",
-                       connected ? "CONN" : "DISC", sniff_ms, ble_ms);
         }
-        chunked_delay(ble_ms, connected);
     }
 }
 
@@ -610,7 +761,10 @@ void bt_stream_init(void)
         ESP_LOGE(TAG, "writer task create failed");
         return;
     }
-    xTaskCreate(coex_window_task, "bt_coex", 3072, NULL, 4, NULL);
+    known_client_load();
+    s_mode_since_us = esp_timer_get_time();
+    open_window();                       /* connect window after power-on */
+    xTaskCreate(radio_task, "bt_radio", 3072, NULL, 4, NULL);
 
     nimble_port_freertos_init(host_task);
     s_ready = true;
@@ -621,6 +775,7 @@ void bt_stream_init(void)
 void bt_stream_pause(void)
 {
     if (!s_ready) return;
+    s_scan_hold = true;
     ble_gap_adv_stop();
     ESP_LOGI(TAG, "BLE advertising stopped for WiFi scan");
 }
@@ -628,7 +783,8 @@ void bt_stream_pause(void)
 void bt_stream_resume(void)
 {
     if (!s_ready) return;
-    start_advertising();
+    s_scan_hold = false;
+    s_mode_gen++;
     ESP_LOGI(TAG, "BLE advertising restarted");
 }
 
@@ -660,4 +816,86 @@ void bt_stream_publish_packet(const uint8_t *payload, uint16_t len, uint32_t sec
     if (xQueueSend(s_queue, &qf, 0) != pdTRUE) {
         free(qf);  /* queue full — drop newest, keep stream live */
     }
+}
+
+void bt_stream_send_record(const uint8_t *buf, size_t len)
+{
+    if (!s_ready || s_conn_handle == BLE_HS_CONN_HANDLE_NONE || !s_notify_enabled) return;
+    if (len > HEADER_LEN + MAX_PAYLOAD) return;
+    qframe_t *qf = (qframe_t *)malloc(sizeof(qframe_t) + len);
+    if (!qf) return;
+    qf->total_len = (uint16_t)len;
+    memcpy(qf->data, buf, len);
+    /* Control replies must not be dropped: wait briefly for queue space */
+    if (xQueueSend(s_queue, &qf, pdMS_TO_TICKS(500)) != pdTRUE) free(qf);
+}
+
+ble_mode_t bt_stream_mode(void) { return s_mode; }
+
+const char *bt_stream_mode_name(void)
+{
+    switch (s_mode) {
+    case BLE_MODE_OFF:       return "off";
+    case BLE_MODE_OPEN:      return "open";
+    case BLE_MODE_CONNECTED: return "connected";
+    case BLE_MODE_RECONNECT: return "reconnect";
+    }
+    return "?";
+}
+
+int bt_stream_window_left_s(void)
+{
+    if (s_mode != BLE_MODE_OPEN || CONFIG_BLE_WINDOW_S == 0) return 0;
+    int64_t left = s_open_until_us - esp_timer_get_time();
+    return left > 0 ? (int)(left / 1000000) : 0;
+}
+
+void bt_stream_ble_on(void)
+{
+    if (!s_ready) return;
+    if (s_mode == BLE_MODE_CONNECTED) return;
+    open_window();
+    dbg_printf("[bt] BLE on for %d s", CONFIG_BLE_WINDOW_S);
+}
+
+void bt_stream_ble_off(void)
+{
+    if (!s_ready) return;
+    s_user_off = true;
+    if (s_conn_handle != BLE_HS_CONN_HANDLE_NONE)
+        ble_gap_terminate(s_conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+    set_mode(BLE_MODE_OFF);
+    led_flash_ble_off();
+    dbg_printf("[bt] BLE off");
+}
+
+void bt_stream_ble_toggle(void)
+{
+    if (s_mode == BLE_MODE_OFF) bt_stream_ble_on();
+    else                        bt_stream_ble_off();
+}
+
+void bt_stream_forget(void)
+{
+    known_client_save("");
+}
+
+bool bt_stream_hello(const char *client_id, bool via_ble)
+{
+    if (!via_ble || !client_id || !client_id[0]) return false;
+    if (s_conn_needs_hello && strcmp(client_id, s_known_client) != 0) {
+        dbg_printf("[bt] HELLO from unknown client during reconnect – dropping");
+        if (s_conn_handle != BLE_HS_CONN_HANDLE_NONE)
+            ble_gap_terminate(s_conn_handle, BLE_ERR_REM_USER_CONN_TERM);
+        return false;
+    }
+    if (strcmp(client_id, s_known_client) != 0) known_client_save(client_id);
+    s_conn_hello_ok = true;
+    s_conn_needs_hello = false;
+    return true;
+}
+
+void bt_stream_bulk_activity(void)
+{
+    s_bulk_until_us = esp_timer_get_time() + 1500000LL;
 }

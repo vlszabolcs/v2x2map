@@ -264,4 +264,34 @@
         <item>N</item><item>NO</item><item>O</item><item>SO</item>
         <item>S</item><item>SW</item><item>W</item><item>NW</item>
     </string-array>
+
+    <!-- Receiver logs (SD card) -->
+    <string name="logs_title">Logs auf dem Empfänger</string>
+    <string name="logs_not_connected">Empfänger per USB oder Bluetooth verbinden, um die Logs zu sehen.</string>
+    <string name="logs_loading">Liste wird gelesen…</string>
+    <string name="logs_no_sd">Keine SD-Karte im Empfänger.</string>
+    <string name="logs_summary">%1$d Dateien · %2$d MB frei · über %3$s</string>
+    <string name="logs_action_download">Herunterladen</string>
+    <string name="logs_action_replay">Auf der Karte zeigen</string>
+    <string name="logs_action_pcap">Als PCAP exportieren (Wireshark)</string>
+    <string name="logs_action_share">Rohlog teilen</string>
+    <string name="logs_action_delete_device">Auf dem Empfänger löschen</string>
+    <string name="logs_action_delete_local">Vom Telefon löschen</string>
+    <string name="logs_file_title">Log #%1$d</string>
+    <string name="logs_busy">Ein Download läuft bereits</string>
+    <string name="logs_replay_started">Log wird auf die Karte geladen…</string>
+    <string name="logs_replay_failed">Log konnte nicht gelesen werden</string>
+    <string name="logs_replay_done">%1$d Frames aus %2$s auf der Karte</string>
+    <string name="logs_pcap_failed">PCAP-Export fehlgeschlagen</string>
+    <string name="logs_pcap_done">PCAP geschrieben (%1$d Frames)</string>
+    <string name="logs_forget_title">Dieses Telefon vergessen</string>
+    <string name="logs_forget_body">Der Empfänger lässt dieses Telefon nach Reichweitenverlust nicht mehr automatisch zurück. Neu verbinden im Verbindungsfenster (Doppeldruck).</string>
+    <string name="logs_forget_done">Empfänger hat das Telefon vergessen</string>
+    <string name="logs_download_failed">Download von Log #%1$d fehlgeschlagen</string>
+    <string name="logs_download_done">Log #%1$d heruntergeladen</string>
+    <string name="logs_recording">wird aufgezeichnet</string>
+    <string name="logs_only_local">nur auf dem Telefon</string>
+    <string name="logs_partial">unvollständig</string>
+    <string name="logs_refresh">Aktualisieren</string>
+    <string name="logs_download_all">Alle herunterladen</string>
 </resources>

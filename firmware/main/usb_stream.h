@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 void usb_stream_init(void);
@@ -15,3 +17,10 @@ void usb_config_rx_start(void);
 
 /** True while a USB-triggered WiFi scan is in progress. */
 bool usb_cfg_is_scanning(void);
+
+/** True while a USB host is actively talking to the port (SOF frames seen);
+ *  false on a power bank / charger. */
+bool usb_stream_host_connected(void);
+
+/** Send a pre-framed record (ITSJ / ITSL / text) without interleaving. */
+void usb_stream_send_record(const uint8_t *buf, size_t len);

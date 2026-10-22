@@ -134,6 +134,18 @@ object Prefs {
     fun setCompassMode(ctx: Context, on: Boolean) =
         prefs(ctx).edit { putBoolean(KEY_COMPASS_MODE, on) }
 
+    /** Random id this phone presents to the receiver (HELLO) so that only it
+     *  is let back in after a range loss. Generated once. */
+    fun clientId(ctx: Context): String {
+        val p = prefs(ctx)
+        p.getString("client_id", null)?.let { return it }
+        val id = java.util.UUID.randomUUID().toString().replace("-", "").take(16)
+        p.edit().putString("client_id", id).apply()
+        return id
+    }
+
+    fun resetClientId(ctx: Context) = prefs(ctx).edit().remove("client_id").apply()
+
     private fun prefs(ctx: Context) =
         ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 }
