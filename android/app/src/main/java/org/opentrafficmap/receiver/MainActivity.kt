@@ -253,12 +253,11 @@ class MainActivity : AppCompatActivity() {
                 updateFilterLabel()
             }
         }
-        // Tapping the map closes the menu
-        binding.map.setOnTouchListener { _, ev ->
-            if (ev.action == android.view.MotionEvent.ACTION_DOWN && binding.filterMenu.visibility == View.VISIBLE)
-                setFilterMenuOpen(false)
-            false
-        }
+        // One-finger zoom (double tap + drag up/down); any touch on the map
+        // also closes the filter menu
+        binding.map.setOnTouchListener(MapZoomGesture(binding.map) {
+            if (binding.filterMenu.visibility == View.VISIBLE) setFilterMenuOpen(false)
+        })
         updateFilterLabel()
     }
 
