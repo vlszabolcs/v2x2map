@@ -309,4 +309,23 @@
     <string name="layers_err_scheme">https:// vagy http:// kezdetűnek kell lennie</string>
     <string name="layers_err_placeholders">Kell bele: {z}, {x} és {y} (vagy {-y})</string>
     <string name="layers_manage">Rétegek kezelése…</string>
+
+    <!-- Log replay, coverage, exports -->
+    <string name="replay_play">Lejátszás</string>
+    <string name="replay_pause">Szünet</string>
+    <string name="replay_close">Visszajátszás bezárása</string>
+    <string name="replay_speed">Lejátszási sebesség</string>
+    <string name="replay_slider">Visszajátszás időpontja</string>
+    <string name="replay_coverage">Lefedettség</string>
+    <string name="replay_transmitters">Adók becsült helye</string>
+    <string name="replay_time_fmt">%1$s · %2$d / %3$d frame</string>
+    <string name="replay_no_track">A naplóban nincs vevőpozíció: lefedettség és becslés nem készíthető</string>
+    <string name="replay_tx_none">Kevés a pozíció az adók helyének becsléséhez</string>
+    <string name="replay_tx_title">Becsült: %1$s</string>
+    <string name="replay_receiver">Vevő</string>
+    <string name="logs_action_gpx">Útvonal exportálása GPX-ként</string>
+    <string name="logs_action_kml">Lefedettségi térkép exportálása KML-ként</string>
+    <string name="logs_export_failed">Az exportálás nem sikerült</string>
+    <string name="logs_export_done">%1$s kész</string>
+    <string name="detail_label_rssi">RSSI</string>
 </resources>

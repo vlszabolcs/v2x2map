@@ -332,4 +332,23 @@
     <string name="layers_err_scheme">Must start with https:// or http://</string>
     <string name="layers_err_placeholders">Needs {z}, {x} and {y} (or {-y})</string>
     <string name="layers_manage">Manage layers…</string>
+
+    <!-- Log replay, coverage, exports -->
+    <string name="replay_play">Play</string>
+    <string name="replay_pause">Pause</string>
+    <string name="replay_close">Close replay</string>
+    <string name="replay_speed">Playback speed</string>
+    <string name="replay_slider">Replay time</string>
+    <string name="replay_coverage">Coverage</string>
+    <string name="replay_transmitters">Transmitter estimates</string>
+    <string name="replay_time_fmt">%1$s · %2$d / %3$d frames</string>
+    <string name="replay_no_track">The log has no receiver positions: no coverage or estimates</string>
+    <string name="replay_tx_none">Not enough positions to estimate transmitters</string>
+    <string name="replay_tx_title">Estimated: %1$s</string>
+    <string name="replay_receiver">Receiver</string>
+    <string name="logs_action_gpx">Export route as GPX</string>
+    <string name="logs_action_kml">Export coverage map as KML</string>
+    <string name="logs_export_failed">Export failed</string>
+    <string name="logs_export_done">%1$s written</string>
+    <string name="detail_label_rssi">RSSI</string>
 </resources>

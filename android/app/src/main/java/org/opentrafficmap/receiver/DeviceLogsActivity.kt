@@ -153,6 +153,8 @@ class DeviceLogsActivity : AppCompatActivity() {
         if (r.localSize > 0) {
             actions += getString(R.string.logs_action_replay) to { replay(r) }
             actions += getString(R.string.logs_action_pcap) to { exportPcap(r) }
+            actions += getString(R.string.logs_action_gpx) to { export(r, "gpx", "application/gpx+xml") { src, dst -> LogTools.toGpx(src, dst) } }
+            actions += getString(R.string.logs_action_kml) to { export(r, "kml", "application/vnd.google-earth.kml+xml") { src, dst -> LogTools.toKml(src, dst) } }
             actions += getString(R.string.logs_action_share) to { share(localFile(r.id), "application/octet-stream") }
         }
         if (r.deviceSize >= 0)
@@ -199,6 +201,19 @@ class DeviceLogsActivity : AppCompatActivity() {
             main.post {
                 if (n < 0) toast(getString(R.string.logs_pcap_failed))
                 else { toast(getString(R.string.logs_pcap_done, n)); share(dst, "application/vnd.tcpdump.pcap") }
+            }
+        }.start()
+    }
+
+    /** GPX / KML export in the background, then the share sheet. */
+    private fun export(r: Row, ext: String, mime: String, write: (File, File) -> Int) {
+        val src = localFile(r.id)
+        val dst = File(dir(), "%08d.%s".format(Locale.ROOT, r.id, ext))
+        Thread {
+            val ok = try { write(src, dst); true } catch (e: Exception) { false }
+            main.post {
+                if (!ok) toast(getString(R.string.logs_export_failed))
+                else { toast(getString(R.string.logs_export_done, dst.name)); share(dst, mime) }
             }
         }.start()
     }

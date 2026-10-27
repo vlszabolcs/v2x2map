@@ -74,7 +74,7 @@ class MainActivity : AppCompatActivity() {
     private var recStartMs = 0L
     private var lastPosSentMs = 0L
     private var pillCompact = false
-    private var replayTrack: Polyline? = null
+    private lateinit var replay: ReplayController
 
     // Own GPS track
     private val ownTrackPoints = mutableListOf<GeoPoint>()
@@ -182,6 +182,8 @@ class MainActivity : AppCompatActivity() {
             override fun handleOnBackPressed() {
                 if (sheet.state != BottomSheetBehavior.STATE_COLLAPSED) {
                     sheet.state = BottomSheetBehavior.STATE_COLLAPSED
+                } else if (replay.active) {
+                    replay.stop()
                 } else {
                     isEnabled = false
                     onBackPressedDispatcher.onBackPressed()
@@ -204,6 +206,9 @@ class MainActivity : AppCompatActivity() {
         adapter = FrameLogAdapter(this) { f -> FrameDetailSheet.show(this, f) }
         binding.log.layoutManager = LinearLayoutManager(this)
         binding.log.adapter = adapter
+        replay = ReplayController(this, binding, markers, adapter,
+            clear = ::clearMapFrames,
+            feed = { frames -> handleFrames(frames, live = false) })
 
         binding.connPill.setOnClickListener { showConnectionMenu() }
         binding.btnSettings.setOnClickListener {
@@ -407,6 +412,7 @@ class MainActivity : AppCompatActivity() {
         SettingsBus.liveRecorder = null
         SettingsBus.liveBtController = null
         LogReplay.listener = null
+        if (::replay.isInitialized) replay.stop()
         DeviceLink.usbSender = null
         DeviceLink.bleSender = null
         mainHandler.removeCallbacksAndMessages(null)
@@ -469,10 +475,8 @@ class MainActivity : AppCompatActivity() {
     // ------------------------------------------ Reset
 
     private fun resetAll() {
-        pendingLogFrames.clear()
-        if (::markers.isInitialized) markers.clear()
-        adapter.clear()
-        totalFrames = 0
+        if (::replay.isInitialized && replay.active) replay.stop()
+        clearMapFrames()
         rateWindow.clear()
         spatRsus.clear()
         ownTrackPoints.clear()
@@ -488,6 +492,16 @@ class MainActivity : AppCompatActivity() {
         binding.emptyLog.visibility  = View.VISIBLE
         binding.spatLight.visibility = View.GONE
         binding.map.invalidate()
+    }
+
+    /** Markers, station list and frame counters (log replay rebuilds these on every seek). */
+    private fun clearMapFrames() {
+        pendingLogFrames.clear()
+        if (::markers.isInitialized) markers.clear()
+        adapter.clear()
+        totalFrames = 0
+        binding.statFrames.text = "0"
+        binding.statStations.text = "0"
     }
 
     // ------------------------------------------ Map layers
@@ -795,6 +809,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleFrames(frames: List<Frame>, live: Boolean = true) {
+        // While a log is replayed the map shows the log; live frames are
+        // still recorded and forwarded
+        val show = !(live && ::replay.isInitialized && replay.active)
+        if (!show) {
+            val mqttFilter = Prefs.mqttFilterTypes(this)
+            for (f in frames) {
+                geiger.click(f.msgType)
+                if (f.msgType.name in mqttFilter) mqttBridges.forEach { it.publish(f.payload) }
+                if (recorder.isRecording) recorder.append(f)
+                rateWindow.add(System.currentTimeMillis())
+                binding.activityBars.hit()
+            }
+            return
+        }
         frames.lastOrNull()?.let { f ->
             val dist = adapter.formatDistance(f.latLon, lastLocation)
             val what = adapter.titleFor(f.msgType, f)
@@ -814,7 +842,7 @@ class MainActivity : AppCompatActivity() {
                 binding.activityBars.hit()
             }
 
-            if (f.msgType == ItsG5Decoder.MsgType.SPATEM && f.latLon != null) {
+            if (live && f.msgType == ItsG5Decoder.MsgType.SPATEM && f.latLon != null) {
                 val (lat, lon) = f.latLon
                 spatRsus[f.stationId ?: 0L] = SpatRsu(lat, lon,
                     f.spatPhase ?: SpatTemParser.Phase.UNKNOWN, System.currentTimeMillis())
@@ -896,34 +924,23 @@ class MainActivity : AppCompatActivity() {
 
     // ------------------------------------------------------------ Log replay
 
-    /** Load a log downloaded from the receiver's SD card onto the map. */
+    /** Open a log downloaded from the receiver's SD card in the replay bar. */
     private fun replayLog(f: java.io.File) {
         if (!::binding.isInitialized) { LogReplay.pending = f; return }
         Thread {
-            val parsed = try { LogTools.parse(f) } catch (e: Exception) { null }
+            val data = try {
+                val p = LogTools.parse(f)
+                ReplayController.Data(f, p, LogTools.coverage(p), LogTools.transmitters(p))
+            } catch (e: Exception) { null }
             runOnUiThread {
-                if (parsed == null) { toast(getString(R.string.logs_replay_failed)); return@runOnUiThread }
-                parsed.frames.chunked(500).forEach { handleFrames(it, live = false) }
-                replayTrack?.let { binding.map.overlays.remove(it) }
-                val pts = parsed.track.map { GeoPoint(it.first, it.second) }
-                if (pts.size >= 2) {
-                    replayTrack = Polyline().also { poly ->
-                        poly.outlinePaint.color = ContextCompat.getColor(this, R.color.type_denm)
-                        poly.outlinePaint.strokeWidth = 6f
-                        poly.setPoints(pts)
-                        binding.map.overlays.add(0, poly)
-                    }
-                }
-                val box = (pts.ifEmpty { parsed.frames.mapNotNull { fr -> fr.latLon?.let { GeoPoint(it.first, it.second) } } })
-                if (box.isNotEmpty()) {
-                    binding.map.zoomToBoundingBox(
-                        org.osmdroid.util.BoundingBox.fromGeoPointsSafe(box).increaseByScale(1.2f), true)
-                }
-                binding.map.invalidate()
-                toast(getString(R.string.logs_replay_done, parsed.frames.size, f.name))
+                if (data == null) { toast(getString(R.string.logs_replay_failed)); return@runOnUiThread }
+                replay.start(data)
+                toast(getString(R.string.logs_replay_done, data.parsed.frames.size, f.name))
             }
         }.start()
     }
+
+    fun toastLong(s: String) = Toast.makeText(this, s, Toast.LENGTH_LONG).show()
 
     private fun toast(s: String) = Toast.makeText(this, s, Toast.LENGTH_SHORT).show()
 

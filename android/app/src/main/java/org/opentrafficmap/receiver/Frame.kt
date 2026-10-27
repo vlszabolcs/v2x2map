@@ -19,8 +19,14 @@ data class Frame(
     val spatPhase: SpatTemParser.Phase? = null,
     val secured: Boolean? = null,   // GN Basic Header NH==2 → IEEE 1609.2 signed packet
     val denmCause: DenmParser.Cause? = null,
+    val rssi: Int? = null,          // dBm, from the receiver's ITSR record (null on old firmware)
 ) {
     val len: Int get() = payload.size
+
+    /** Transmitter address (802.11 addr2) as aa:bb:cc:dd:ee:ff, if present. */
+    val srcMac: String? get() =
+        if (payload.size < 16) null
+        else (10 until 16).joinToString(":") { "%02x".format(payload[it].toInt() and 0xFF) }
 
     fun hexPreview(maxBytes: Int = 32): String {
         val n = minOf(payload.size, maxBytes)

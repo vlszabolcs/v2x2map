@@ -63,6 +63,8 @@ object FrameDetailSheet {
 
         if (f.stationId != null)
             row(ctx.getString(R.string.detail_label_station), "%016x".format(f.stationId))
+        if (f.rssi != null)
+            row(ctx.getString(R.string.detail_label_rssi), "${f.rssi} dBm")
 
         val ll = f.latLon
         if (ll != null) {

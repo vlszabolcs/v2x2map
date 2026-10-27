@@ -32,6 +32,9 @@ class FrameLogAdapter(
     /** Updated by MainActivity on every location fix for distance column. */
     @Volatile var userLocation: Location? = null
 
+    /** Time source for "last seen" ages; log replay sets it to the replay time. */
+    var clock: () -> Long = { System.currentTimeMillis() }
+
     // ── internal data model ──────────────────────────────────────────────────
 
     data class StationEntry(
@@ -63,7 +66,7 @@ class FrameLogAdapter(
             val key   = stationKey(frame)
             val entry = stations.getOrPut(key) { StationEntry(key, frame.msgType, frame.stationId) }
             entry.frameCount++
-            entry.lastSeen   = System.currentTimeMillis()
+            entry.lastSeen   = clock()
             entry.lastSecured = frame.secured
             entry.lastLatLon  = frame.latLon ?: entry.lastLatLon
             entry.recentFrames.addFirst(frame)
@@ -126,7 +129,7 @@ class FrameLogAdapter(
     private fun bindStation(vh: StationVH, entry: StationEntry) {
         val ctx   = vh.itemView.context
         val color = entry.msgType.color
-        val now   = System.currentTimeMillis()
+        val now   = clock()
 
         // Type icon on a tinted circle
         vh.iconBg.backgroundTintList = ColorStateList.valueOf((color and 0x00FFFFFF) or 0x2E000000)
@@ -139,7 +142,8 @@ class FrameLogAdapter(
         val f = entry.recentFrames.firstOrNull()
         vh.title.text   = titleFor(entry.msgType, f)
         val sid = entry.stationId?.let { "#%08x".format(it.toInt()) } ?: "—"
-        vh.summary.text = "${entry.msgType.short} · $sid · ${entry.frameCount}×"
+        val rssi = f?.rssi?.let { " · $it dBm" } ?: ""
+        vh.summary.text = "${entry.msgType.short} · $sid · ${entry.frameCount}×$rssi"
 
         // Right column: the one number that matters for this type, then distance · age
         vh.main.text = mainValueFor(entry.msgType, f)
@@ -237,7 +241,7 @@ class FrameLogAdapter(
 
     /** Stations heard within [windowMs], per message type. */
     fun activeCounts(windowMs: Long = ACTIVE_MS): Map<ItsG5Decoder.MsgType, Int> {
-        val cutoff = System.currentTimeMillis() - windowMs
+        val cutoff = clock() - windowMs
         return stations.values.filter { it.lastSeen >= cutoff }.groupingBy { it.msgType }.eachCount()
     }
 

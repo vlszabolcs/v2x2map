@@ -5,15 +5,13 @@ import android.util.Log
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 /**
- * Writes received frames as a standard PCAP file (libpcap format, link type 105 =
- * LINKTYPE_IEEE802_11 raw 802.11 frames). Files can be opened directly in Wireshark.
+ * Writes received frames as a standard PCAP file (libpcap format, link type 127 =
+ * radiotap + 802.11, so the RSSI is kept). Files can be opened directly in Wireshark.
  *
  * Output path: Android/data/org.opentrafficmap.receiver/files/  (no extra permission)
  */
@@ -75,34 +73,8 @@ class FrameRecorder(private val context: Context) {
 
     // ── PCAP format ────────────────────────────────────────────────────────
 
-    /** 24-byte global header (little-endian). Link type 105 = LINKTYPE_IEEE802_11. */
-    private fun writePcapGlobalHeader(out: BufferedOutputStream) {
-        val buf = ByteBuffer.allocate(24).order(ByteOrder.LITTLE_ENDIAN)
-        buf.putInt(PCAP_MAGIC)      // magic number (LE)
-        buf.putShort(2)             // version major
-        buf.putShort(4)             // version minor
-        buf.putInt(0)               // GMT offset
-        buf.putInt(0)               // timestamp accuracy
-        buf.putInt(65535)           // snaplen
-        buf.putInt(LINK_IEEE80211)  // link type: raw 802.11 (no radiotap)
-        out.write(buf.array())
-    }
+    private fun writePcapGlobalHeader(out: BufferedOutputStream) = LogTools.Pcap.writeGlobalHeader(out)
 
-    /** 16-byte per-packet header + payload. */
-    private fun writePcapPacket(out: BufferedOutputStream, frame: Frame) {
-        val len = frame.payload.size
-        val hdr = ByteBuffer.allocate(16).order(ByteOrder.LITTLE_ENDIAN)
-        hdr.putInt(frame.sec.toInt())   // ts_sec
-        hdr.putInt(frame.usec.toInt())  // ts_usec
-        hdr.putInt(len)                 // incl_len
-        hdr.putInt(len)                 // orig_len
-        out.write(hdr.array())
-        out.write(frame.payload)
-    }
-
-    companion object {
-        // 0xa1b2c3d4 stored LE → bytes d4 c3 b2 a1 → Wireshark recognises native-endian pcap
-        private val PCAP_MAGIC     = 0xa1b2c3d4.toInt()
-        private const val LINK_IEEE80211 = 105
-    }
+    private fun writePcapPacket(out: BufferedOutputStream, frame: Frame) =
+        LogTools.Pcap.writePacket(out, frame.sec * 1_000_000L + frame.usec, frame.payload, frame.rssi)
 }

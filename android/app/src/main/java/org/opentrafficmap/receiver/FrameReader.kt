@@ -11,6 +11,7 @@ import java.util.zip.CRC32
  *     "ITS5"  sec u32 | usec u32 | len u16 | payload      captured 802.11 frame
  *     "ITSJ"  len u16 | json                              reply / meta record
  *     "ITSL"  file u32 | offset u32 | len u16 | data | crc32 u32   log chunk
+ *     "ITSR"  rssi i8 | usec_lo u16                       RSSI of the next frame
  *
  * Integers little-endian. Everything else (bootloader text, debug lines,
  * CFG_OK replies) is skipped. A frame's sec >= 1e9 means Unix time; smaller
@@ -19,6 +20,9 @@ import java.util.zip.CRC32
 class FrameReader {
     private val buf = ArrayDeque<Byte>()
     private var seq = 0L
+    /** RSSI and low 16 bits of usec from the last ITSR record. */
+    private var pendingRssi: Int? = null
+    private var pendingUsecLo = -1
 
     /** JSON meta records (command replies, time/position records in logs). */
     var onJson: ((String) -> Unit)? = null
@@ -53,7 +57,16 @@ class FrameReader {
                     if (buf.size < HEADER_LEN + plen) return out
                     repeat(HEADER_LEN) { buf.removeFirst() }
                     val payload = take(plen)
-                    out += decode(sec, usec, payload)
+                    // Only pair with the RSSI record that was sent for this frame
+                    val rssi = pendingRssi?.takeIf { pendingUsecLo == (usec and 0xFFFF).toInt() }
+                    pendingRssi = null
+                    out += decode(sec, usec, payload, rssi)
+                }
+                'R' -> {
+                    if (buf.size < RSSI_LEN) return out
+                    val r = take(RSSI_LEN)
+                    pendingRssi = r[4].toInt()      // signed dBm
+                    pendingUsecLo = (r[5].toInt() and 0xFF) or ((r[6].toInt() and 0xFF) shl 8)
                 }
                 'J' -> {
                     if (buf.size < 6) return out
@@ -86,7 +99,7 @@ class FrameReader {
         }
     }
 
-    private fun decode(sec: Long, usec: Long, payload: ByteArray): Frame {
+    private fun decode(sec: Long, usec: Long, payload: ByteArray, rssi: Int?): Frame {
         val d = ItsG5Decoder.decodeFull(payload)
         return Frame(
             seq         = ++seq,
@@ -103,6 +116,7 @@ class FrameReader {
             spatPhase   = d.spatPhase,
             denmCause   = d.denmCause,
             secured     = d.secured,
+            rssi        = rssi,
         )
     }
 
@@ -119,7 +133,7 @@ class FrameReader {
         return out
     }
 
-    /** Index of the first "ITS5" / "ITSJ" / "ITSL" magic and its kind. */
+    /** Index of the first "ITS5" / "ITSJ" / "ITSL" / "ITSR" magic and its kind. */
     private fun findMagic(): Pair<Int, Char> {
         val n = buf.size
         if (n < 4) return -1 to ' '
@@ -133,6 +147,7 @@ class FrameReader {
                     0x35 -> return (i - 3) to '5'
                     0x4A -> return (i - 3) to 'J'
                     0x4C -> return (i - 3) to 'L'
+                    0x52 -> return (i - 3) to 'R'
                 }
             }
             b0 = b1; b1 = b2; b2 = b3
@@ -144,6 +159,7 @@ class FrameReader {
     companion object {
         const val HEADER_LEN = 14
         const val LOG_HDR = 14
+        const val RSSI_LEN = 7
         const val MAX_PAYLOAD = 4096
         const val MAX_JSON = 4096
     }

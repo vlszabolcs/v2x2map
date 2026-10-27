@@ -17,6 +17,9 @@ class MarkerLayer(private val map: MapView, private val context: Context) {
 
     private data class Entry(val marker: Marker, val createdMs: Long, val type: ItsG5Decoder.MsgType)
 
+    /** Time source for marker ages; log replay sets it to the replay time. */
+    var clock: () -> Long = { System.currentTimeMillis() }
+
     /** Message types whose markers are currently hidden by the filter chips. */
     private val hiddenTypes = mutableSetOf<ItsG5Decoder.MsgType>()
 
@@ -51,7 +54,7 @@ class MarkerLayer(private val map: MapView, private val context: Context) {
         }
         m.isEnabled = f.msgType !in hiddenTypes
         map.overlays.add(m)
-        entries.addLast(Entry(m, System.currentTimeMillis(), f.msgType))
+        entries.addLast(Entry(m, clock(), f.msgType))
         prune()
     }
 
@@ -67,7 +70,7 @@ class MarkerLayer(private val map: MapView, private val context: Context) {
         m.icon     = makeCarIcon(f.speedMps, f.headingDeg)
         m.title    = buildTitle(f)
         m.snippet  = buildSnippet(f)
-        camLastSeen[sid] = System.currentTimeMillis()
+        camLastSeen[sid] = clock()
         map.invalidate()
     }
 
@@ -106,7 +109,7 @@ class MarkerLayer(private val map: MapView, private val context: Context) {
     }
 
     fun prune() {
-        val now   = System.currentTimeMillis()
+        val now   = clock()
         val ttlMs = Prefs.markerTtlMinutes(context).toLong() * 60_000L
         var changed = false
 
@@ -171,7 +174,7 @@ class MarkerLayer(private val map: MapView, private val context: Context) {
             }
         }
         line.setPoints(pts)
-        pathLastSeen[stationId] = System.currentTimeMillis()
+        pathLastSeen[stationId] = clock()
         map.invalidate()
     }
 
@@ -200,6 +203,7 @@ class MarkerLayer(private val map: MapView, private val context: Context) {
         sb.append("lat=%.6f  lon=%.6f\n".format(lat, lon))
         f.speedMps?.takeIf { it > 0.5 }?.let { sb.append("speed=%.1f km/h\n".format(it * 3.6)) }
         f.headingDeg?.let { sb.append("hdg=%.0f°\n".format(it)) }
+        f.rssi?.let { sb.append("rssi=$it dBm\n") }
         sb.append("len=${f.len}")
         return sb.toString()
     }

@@ -319,4 +319,23 @@
     <string name="layers_err_scheme">Muss mit https:// oder http:// beginnen</string>
     <string name="layers_err_placeholders">Benötigt {z}, {x} und {y} (oder {-y})</string>
     <string name="layers_manage">Ebenen verwalten…</string>
+
+    <!-- Log replay, coverage, exports -->
+    <string name="replay_play">Abspielen</string>
+    <string name="replay_pause">Pause</string>
+    <string name="replay_close">Wiedergabe schließen</string>
+    <string name="replay_speed">Wiedergabegeschwindigkeit</string>
+    <string name="replay_slider">Wiedergabezeit</string>
+    <string name="replay_coverage">Abdeckung</string>
+    <string name="replay_transmitters">Senderschätzung</string>
+    <string name="replay_time_fmt">%1$s · %2$d / %3$d Frames</string>
+    <string name="replay_no_track">Das Log enthält keine Empfängerpositionen: keine Abdeckung oder Schätzung</string>
+    <string name="replay_tx_none">Zu wenige Positionen für eine Senderschätzung</string>
+    <string name="replay_tx_title">Geschätzt: %1$s</string>
+    <string name="replay_receiver">Empfänger</string>
+    <string name="logs_action_gpx">Route als GPX exportieren</string>
+    <string name="logs_action_kml">Abdeckungskarte als KML exportieren</string>
+    <string name="logs_export_failed">Export fehlgeschlagen</string>
+    <string name="logs_export_done">%1$s geschrieben</string>
+    <string name="detail_label_rssi">RSSI</string>
 </resources>
