@@ -135,6 +135,32 @@ available over USB (`CFG:` and the command channel) and BLE. While a client
 supplies positions the u-blox module is put into backup sleep and woken when
 the client goes quiet for 10 s.
 
+## RSSI
+
+Every frame is preceded by a 7-byte `ITSR` record (`rssi` i8 dBm, low 16
+bits of the frame's `usec`) on USB, BLE and in the SD log. Readers that do
+not know it skip it, so older apps and bridges keep working. The app shows
+the RSSI per station, the bridge adds it to dashboard events, and PCAP
+exports use radiotap headers so Wireshark shows the signal level.
+
+## MQTT offline buffer
+
+`CONFIG_MQTT_BUFFER_KB` (32 KB on the dongle) keeps frames captured while
+the broker is unreachable, e.g. during the sniff phase of the Wi-Fi cycle
+mode, and publishes them in order once the connection is back. In cycle
+mode the Wi-Fi window stays open until the buffer is empty, at most
+`wifims`.
+
+## Log replay in the app
+
+*Logs on receiver → Show on map* opens a replay bar: time slider,
+play/pause, 1–300× speed and the receiver's position at the slider time.
+Two layers are computed from the whole log: **Coverage** (the route in
+25 m cells coloured by best RSSI) and **Transmitter estimates** (position of
+transmitters whose frames carry none, from the RSSI-weighted receiver
+positions, with an uncertainty circle). The logs screen also exports the
+route as GPX and coverage + transmitters as KML.
+
 ## Command channel
 
 Same text commands over USB (one per line) and the BLE control

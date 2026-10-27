@@ -1,25 +1,33 @@
 # Firmware – tervezett fejlesztések
 
-## Állapot (2026-10-27, commit 86de4a3)
+## Állapot (2026-10-27)
 
 | # | Fejlesztés | Állapot |
 |---|---|---|
 | 1 | Folyamatos vétel USB-n | **kész** – a 6. pont része: BLE nélkül nincs időosztás; USB-írás csak hosttal, atomikusan |
-| 2 | MQTT Wi-Fi-n | **kész** – `IP_EVENT_STA_GOT_IP`-re indul; ciklikus módban a pufferelés még hiányzik |
+| 2 | MQTT Wi-Fi-n | **kész** – `IP_EVENT_STA_GOT_IP`-re indul (azonnali újracsatlakozással); offline RAM-puffer (`CONFIG_MQTT_BUFFER_KB`, T-Dongle-on 32 KB), a ciklikus Wi-Fi ablak a puffer kiürüléséig tart (legfeljebb `wifims`) |
 | 3 | PCAP SD-re | **kész** – T-Dongle overlay: `SNIFFER_PCAP_DESTINATION_SD`, kártya bootkor csatolva |
 | 4 | SD-napló + letöltés | **kész** – firmware, app („Naplók a vevőn”), `bridge/download_logs.py` |
 | 5 | GNSS | **kész (kód)** – `sdkconfig.defaults.tdongle-c5-gnss`; modullal még nincs tesztelve |
 | 6 | Működési módok | **kész** – eltérés a tervtől: BLE-párosítás (bond) helyett az app egyedi azonosítót küld (`HELLO:`), az újracsatlakozási módban csak azt engedi be. Így iOS-en és régi Androidon is működik, és nem kell a véletlen BLE-címekkel (RPA) foglalkozni |
+| 7 | RSSI az appnak | **kész (kód)** – új `ITSR` rekord (rssi i8, usec_lo u16) minden frame előtt USB-n, BLE-n és az SD-naplóban; a régi olvasók átugorják. App: állomáslista, részletek, térképes buborék; PCAP radiotap fejléccel (Wireshark mutatja az RSSI-t) |
+| 8 | Visszajátszás időcsúszkával | **kész (kód)** – app: csúszka, lejátszás/szünet, 1–300× sebesség, vevő pozíciója az adott időpontban |
+| 9 | Lefedettségi térkép | **kész (kód)** – 25 m-es cellák a vevő útvonalán, legjobb RSSI szerint színezve (RSSI nélkül a frame-szám szerint) |
+| 10 | GPX/KML export | **kész (kód)** – „Naplók a vevőn”: útvonal GPX-ként, lefedettség + adók KML-ként |
+| 11 | RSU-helybecslés | **kész (kód)** – állomásazonosító vagy 802.11 forráscím szerint csoportosítva, a vételi pontok vett teljesítménnyel súlyozott középpontja, bizonytalansági körrel; csak a pozíciót nem küldő adókra |
 
 **Hardveres teszt (2026-10-27):** a módosítások LilyGO T-Dongle-C5-ön
 kipróbálva, működnek. A GNSS-t modullal még nem teszteltük. A protokollt
 emellett gépi teszt is ellenőrzi (C rekordok → Python olvasó, virtuális
 eszköz → letöltő).
 
-**Nyitott:** MQTT-pufferelés ciklikus Wi-Fi módban; RSSI továbbítása az
-appnak (a frame-fejlécben nincs hely, külön rekord kellene); app-oldali
-lefedettségi térkép, GPX/KML export, RSU-helybecslés (TODO 5 app része);
-visszajátszás időcsúszkával (most egyben tölt be).
+A 7–11. pont és az MQTT-puffer (2026-10-27) még nincs hardveren
+tesztelve. A firmware mindhárom változata (Waveshare, T-Dongle-C5,
+T-Dongle-C5 + GNSS) GitHub Actionsben fordul (`.github/workflows/firmware.yml`).
+
+**Nyitott:** a pufferelt MQTT-frame-ek a `packet` topicra mennek, saját
+időbélyeg nélkül (a fogadó a beérkezés idejét látja, legfeljebb `sniffms`
+késéssel).
 
 ---
 
