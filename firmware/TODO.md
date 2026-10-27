@@ -1,6 +1,6 @@
 # Firmware – tervezett fejlesztések
 
-## Állapot (2026-10-22, commit 2bcb227)
+## Állapot (2026-10-27, commit 86de4a3)
 
 | # | Fejlesztés | Állapot |
 |---|---|---|
@@ -11,8 +11,10 @@
 | 5 | GNSS | **kész (kód)** – `sdkconfig.defaults.tdongle-c5-gnss`; modullal még nincs tesztelve |
 | 6 | Működési módok | **kész** – eltérés a tervtől: BLE-párosítás (bond) helyett az app egyedi azonosítót küld (`HELLO:`), az újracsatlakozási módban csak azt engedi be. Így iOS-en és régi Androidon is működik, és nem kell a véletlen BLE-címekkel (RPA) foglalkozni |
 
-Valós hardveren egyik sincs még kipróbálva; a protokollt gépi teszt
-ellenőrizte (C rekordok → Python olvasó, virtuális eszköz → letöltő).
+**Hardveres teszt (2026-10-27):** a módosítások LilyGO T-Dongle-C5-ön
+kipróbálva, működnek. A GNSS-t modullal még nem teszteltük. A protokollt
+emellett gépi teszt is ellenőrzi (C rekordok → Python olvasó, virtuális
+eszköz → letöltő).
 
 **Nyitott:** MQTT-pufferelés ciklikus Wi-Fi módban; RSSI továbbítása az
 appnak (a frame-fejlécben nincs hely, külön rekord kellene); app-oldali
