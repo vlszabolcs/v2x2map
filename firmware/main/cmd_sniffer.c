@@ -143,7 +143,7 @@ static void sniffer_task(void *)
             clock_stamp(up, &packet_info.seconds, &packet_info.microseconds);
         }
         sdlog_write_frame(packet_info.seconds, packet_info.microseconds,
-                          packet_info.payload, (uint16_t)packet_info.length);
+                          packet_info.payload, (uint16_t)packet_info.length, packet_info.rssi);
         if (write_pcap && packet_capture(packet_info.payload, packet_info.length, packet_info.seconds,
                                          packet_info.microseconds) != ESP_OK) {
             ESP_LOGW(TAG, "save captured packet failed");
@@ -152,10 +152,10 @@ static void sniffer_task(void *)
         mqtt_handle_packet(&packet_info);
 
         usb_stream_publish_packet(packet_info.payload, (uint16_t)packet_info.length,
-                                  packet_info.seconds, packet_info.microseconds);
+                                  packet_info.seconds, packet_info.microseconds, packet_info.rssi);
 
         bt_stream_publish_packet(packet_info.payload, (uint16_t)packet_info.length,
-                                 packet_info.seconds, packet_info.microseconds);
+                                 packet_info.seconds, packet_info.microseconds, packet_info.rssi);
 
         display_on_packet(packet_info.payload, packet_info.length, packet_info.rssi);
 

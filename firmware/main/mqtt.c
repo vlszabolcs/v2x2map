@@ -11,6 +11,10 @@
 #include "esp_mac.h"
 #include "esp_timer.h"
 #include "esp_netif.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/message_buffer.h"
+#include "freertos/semphr.h"
+#include "freertos/task.h"
 #include "mqtt_client.h"
 
 #include "cmd_sniffer.h"
@@ -35,14 +39,69 @@ static char info_topic[128];
 
 static esp_timer_handle_t stats_timer_handle;
 
+/* Offline buffer: frames captured while the broker is unreachable (e.g. the
+ * sniff phase of the Wi-Fi cycle mode) are kept here, oldest dropped first,
+ * and published by drain_task as soon as the connection is back. */
+#define BUF_BYTES   ((size_t)CONFIG_MQTT_BUFFER_KB * 1024u)
+#define BUF_MAX_PKT 2048
+
+static MessageBufferHandle_t s_buf;
+static SemaphoreHandle_t     s_buf_mtx;
+static TaskHandle_t          s_drain_task;
+static volatile size_t       s_backlog;
+static uint32_t              s_buf_dropped;
+
 static void mqtt_set_connected(bool new_connected)
 {
     if (new_connected != connected)
     {
         connected = new_connected;
         esp_event_post(MQTT_EVENT_BASE, new_connected ? MQTT_CONNECTED : MQTT_DISCONNECTED, NULL, 0, 0);
+        if (new_connected && s_drain_task) xTaskNotifyGive(s_drain_task);
     }
 }
+
+static void buffer_packet(const void *data, size_t len)
+{
+    if (!s_buf || len == 0 || len > BUF_MAX_PKT) return;
+    static uint8_t scratch[BUF_MAX_PKT];
+    xSemaphoreTake(s_buf_mtx, portMAX_DELAY);
+    /* Make room by dropping the oldest frames */
+    while (xMessageBufferSpacesAvailable(s_buf) < len + sizeof(size_t) && s_backlog > 0) {
+        if (xMessageBufferReceive(s_buf, scratch, sizeof(scratch), 0) == 0) break;
+        s_backlog--;
+        s_buf_dropped++;
+    }
+    if (xMessageBufferSend(s_buf, data, len, 0) == len) s_backlog++;
+    else s_buf_dropped++;
+    xSemaphoreGive(s_buf_mtx);
+}
+
+static void drain_task(void *arg)
+{
+    (void)arg;
+    static uint8_t pkt[BUF_MAX_PKT];
+    size_t held = 0;                 /* a frame taken out but not yet sent */
+    for (;;) {
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(1000));
+        while (client && connected && (held || s_backlog)) {
+            if (!held) {
+                xSemaphoreTake(s_buf_mtx, portMAX_DELAY);
+                held = xMessageBufferReceive(s_buf, pkt, sizeof(pkt), 0);
+                if (held && s_backlog) s_backlog--;
+                xSemaphoreGive(s_buf_mtx);
+                if (!held) { s_backlog = 0; break; }
+            }
+            if (esp_mqtt_client_publish(client, packet_topic, (const char *)pkt, held, 0, 0) < 0)
+                break;               /* link went down again: keep it for later */
+            held = 0;
+        }
+    }
+}
+
+size_t mqtt_backlog(void) { return s_backlog; }
+
+bool mqtt_is_connected(void) { return client && connected; }
 
 static void publish_node_info(void)
 {
@@ -308,10 +367,16 @@ static void app_event_handler(void *handler_args, esp_event_base_t base, int32_t
 
 void mqtt_handle_packet(sniffer_packet_info_t *packet)
 {
-    if (!client || !connected)
+    if (!client)
         return;
 
-    esp_mqtt_client_publish(client, packet_topic, (const char *)packet->payload, packet->length, 0, 0);
+    /* Keep the order: while older frames are still queued, queue this too */
+    if (connected && s_backlog == 0 &&
+        esp_mqtt_client_publish(client, packet_topic, (const char *)packet->payload, packet->length, 0, 0) >= 0)
+        return;
+
+    buffer_packet(packet->payload, packet->length);
+    if (connected && s_drain_task) xTaskNotifyGive(s_drain_task);
 }
 
 /* Wi-Fi station (wifi_manager) got an address: start MQTT once. The client
@@ -319,7 +384,11 @@ void mqtt_handle_packet(sniffer_packet_info_t *packet)
  * windows of the cycle mode), so it is not torn down on disconnect. */
 static void wifi_ip_handler(void *handler_args, esp_event_base_t base, int32_t event_id, void *event_data)
 {
-    if (event_id == IP_EVENT_STA_GOT_IP) mqtt_start();
+    if (event_id != IP_EVENT_STA_GOT_IP) return;
+    if (!client) mqtt_start();
+    /* Cycle mode: the Wi-Fi window is short, don't wait for the client's
+     * own reconnect timer */
+    else if (!connected) esp_mqtt_client_reconnect(client);
 }
 
 void mqtt_init(void)
@@ -333,4 +402,16 @@ void mqtt_init(void)
         .name = "mqtt_stats"
     };
     ESP_ERROR_CHECK(esp_timer_create(&create_args, &stats_timer_handle));
+
+    if (BUF_BYTES > 0) {
+        s_buf = xMessageBufferCreate(BUF_BYTES);
+        s_buf_mtx = xSemaphoreCreateMutex();
+        if (s_buf && s_buf_mtx) {
+            xTaskCreate(drain_task, "mqtt_drain", 3072, NULL, 3, &s_drain_task);
+            ESP_LOGI(TAG, "offline buffer %u KB", (unsigned)CONFIG_MQTT_BUFFER_KB);
+        } else {
+            ESP_LOGE(TAG, "offline buffer: out of memory");
+            if (s_buf) { vMessageBufferDelete(s_buf); s_buf = NULL; }
+        }
+    }
 }

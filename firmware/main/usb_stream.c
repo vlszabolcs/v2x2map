@@ -65,7 +65,7 @@ void usb_stream_init(void)
     }
 }
 
-void usb_stream_publish_packet(const uint8_t *payload, uint16_t len, uint32_t sec, uint32_t usec)
+void usb_stream_publish_packet(const uint8_t *payload, uint16_t len, uint32_t sec, uint32_t usec, int8_t rssi)
 {
     if (!s_ready) usb_stream_init();
     if (!s_ready) return;
@@ -73,14 +73,16 @@ void usb_stream_publish_packet(const uint8_t *payload, uint16_t len, uint32_t se
     /* No host (power bank / charger): don't spend time on a dead port */
     if (!usb_serial_jtag_is_connected()) return;
 
-    /* Header + payload in one write so a slow or absent reader can only cost
-     * one short timeout per frame instead of two. */
-    uint8_t stackbuf[REC_FRAME_HDR + 512];
-    uint8_t *buf = (len <= 512) ? stackbuf : malloc(REC_FRAME_HDR + len);
+    /* RSSI record + header + payload in one write so a slow or absent reader
+     * can only cost one short timeout per frame. */
+    uint8_t stackbuf[REC_RSSI_LEN + REC_FRAME_HDR + 512];
+    uint8_t *buf = (len <= 512) ? stackbuf : malloc(REC_RSSI_LEN + REC_FRAME_HDR + len);
     if (!buf) return;
-    rec_frame_hdr(buf, sec, usec, len);
-    if (len) memcpy(buf + REC_FRAME_HDR, payload, len);
-    usb_write_locked(buf, REC_FRAME_HDR + len, pdMS_TO_TICKS(20));
+    size_t n = rec_rssi(buf, rssi, usec);
+    rec_frame_hdr(buf + n, sec, usec, len);
+    n += REC_FRAME_HDR;
+    if (len) memcpy(buf + n, payload, len);
+    usb_write_locked(buf, n + len, pdMS_TO_TICKS(20));
     if (buf != stackbuf) free(buf);
     led_pulse_usb_tx();
 }
@@ -91,7 +93,7 @@ void usb_stream_send_test_frame(void)
         0xDE, 0xAD, 0xBE, 0xEF, 0x01, 0x02, 0x03, 0x04,
         0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C
     };
-    usb_stream_publish_packet(test_payload, sizeof(test_payload), 1234567890U, 999U);
+    usb_stream_publish_packet(test_payload, sizeof(test_payload), 1234567890U, 999U, 0);
 }
 
 /* ── USB RX config channel ──────────────────────────────────────────────

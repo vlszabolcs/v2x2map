@@ -31,6 +31,7 @@
 
 #include "cmd_sniffer.h"
 #include "config.h"
+#include "mqtt.h"
 #include "usb_stream.h"
 
 static const char TAG[] = "WIFI_MGR";
@@ -228,10 +229,15 @@ static void cycle_task(void *arg)
 
         if (bits & EV_CONNECTED) {
             ESP_LOGD(TAG, "cycle: connected, MQTT flushing");
-            /* Give MQTT a short window to flush queued frames */
-            uint32_t flush_ms = s_wifi_ms / 3;
-            if (flush_ms < 200) flush_ms = 200;
-            vTaskDelay(pdMS_TO_TICKS(flush_ms));
+            /* Stay until the broker is reached and the offline buffer is
+             * empty, but no longer than the Wi-Fi window */
+            int64_t until = esp_timer_get_time() + (int64_t)s_wifi_ms * 1000;
+            vTaskDelay(pdMS_TO_TICKS(200));
+            while (esp_timer_get_time() < until &&
+                   !(mqtt_is_connected() && mqtt_backlog() == 0))
+                vTaskDelay(pdMS_TO_TICKS(100));
+            if (mqtt_backlog())
+                ESP_LOGW(TAG, "cycle: %u frames still queued for MQTT", (unsigned)mqtt_backlog());
             esp_wifi_disconnect();
             vTaskDelay(pdMS_TO_TICKS(200));
         } else {

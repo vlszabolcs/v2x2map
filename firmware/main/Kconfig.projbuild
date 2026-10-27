@@ -255,6 +255,17 @@ menu "Example Configuration"
             default 64
     endif
 
+    config MQTT_BUFFER_KB
+        int "MQTT offline buffer (KB, 0 = off)"
+        range 0 256
+        default 32 if BOARD_LILYGO_T_DONGLE_C5
+        default 0
+        help
+            Frames captured while the broker is unreachable (the sniff phase of
+            the Wi-Fi cycle mode, short outages) are kept in RAM and published
+            when the connection is back. The oldest frames are dropped when the
+            buffer is full.
+
     config ENABLE_GNSS
         bool "GNSS module on a UART (NMEA)"
         default n

@@ -25,6 +25,7 @@
 #include "ctrl.h"
 #include "display.h"
 #include "led.h"
+#include "records.h"
 #include "usb_stream.h"
 
 /* Private NimBLE API: forces the controller's public address. Used here so
@@ -788,30 +789,24 @@ void bt_stream_resume(void)
     ESP_LOGI(TAG, "BLE advertising restarted");
 }
 
-void bt_stream_publish_packet(const uint8_t *payload, uint16_t len, uint32_t sec, uint32_t usec)
+void bt_stream_publish_packet(const uint8_t *payload, uint16_t len, uint32_t sec, uint32_t usec, int8_t rssi)
 {
     if (!s_ready) return;
     if (s_conn_handle == BLE_HS_CONN_HANDLE_NONE || !s_notify_enabled) return;
     if (len > MAX_PAYLOAD) return;
 
-    size_t total = HEADER_LEN + len;
+    /* The RSSI record travels in the same queue item, right before its frame */
+    uint8_t rr[REC_RSSI_LEN];
+    size_t rn = rec_rssi(rr, rssi, usec);
+    size_t total = rn + REC_FRAME_HDR + len;
     qframe_t *qf = (qframe_t *)malloc(sizeof(qframe_t) + total);
     if (qf == NULL) return;
     qf->total_len = (uint16_t)total;
 
     uint8_t *p = qf->data;
-    p[0]  = 'I';  p[1]  = 'T';  p[2]  = 'S';  p[3]  = '5';
-    p[4]  = (uint8_t)(sec        & 0xff);
-    p[5]  = (uint8_t)((sec >>  8) & 0xff);
-    p[6]  = (uint8_t)((sec >> 16) & 0xff);
-    p[7]  = (uint8_t)((sec >> 24) & 0xff);
-    p[8]  = (uint8_t)(usec        & 0xff);
-    p[9]  = (uint8_t)((usec >>  8) & 0xff);
-    p[10] = (uint8_t)((usec >> 16) & 0xff);
-    p[11] = (uint8_t)((usec >> 24) & 0xff);
-    p[12] = (uint8_t)(len        & 0xff);
-    p[13] = (uint8_t)((len >>  8) & 0xff);
-    if (len > 0) memcpy(p + HEADER_LEN, payload, len);
+    if (rn) memcpy(p, rr, rn);
+    rec_frame_hdr(p + rn, sec, usec, len);
+    if (len > 0) memcpy(p + rn + REC_FRAME_HDR, payload, len);
 
     if (xQueueSend(s_queue, &qf, 0) != pdTRUE) {
         free(qf);  /* queue full — drop newest, keep stream live */

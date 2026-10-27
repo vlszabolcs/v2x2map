@@ -11,6 +11,11 @@ Frame format on the wire (little-endian, no padding):
     len       u16   payload length in bytes
     payload   <len> raw 802.11 MAC frame
 
+A frame may be preceded by an RSSI record:
+    magic[4]  = b"ITSR"
+    rssi      i8    dBm
+    usec_lo   u16   low 16 bits of the following frame's usec
+
 Run:
     python its_g5_bridge.py --node-id V2X2MAP:d2cf13ed6293
     python its_g5_bridge.py --node-id V2X2MAP:d2cf13ed6293 --broker mqtts://broker1:8883 --broker mqtt://broker2:1883
@@ -38,6 +43,8 @@ import dashboard_server
 MAGIC      = b"ITS5"
 HEADER_FMT = "<4sIIH"
 HEADER_LEN = struct.calcsize(HEADER_FMT)  # 14
+RSSI_MAGIC = b"ITSR"
+RSSI_LEN   = 7
 
 DEFAULT_BROKER = "mqtts://cits1.opentrafficmap.org:8883"
 
@@ -167,17 +174,27 @@ def decode_itsg5_full(payload: bytes) -> dict:
 # PCAP writer
 # ---------------------------------------------------------------------------
 
+def radiotap_header(rssi: int | None) -> bytes:
+    """Radiotap header carrying the antenna signal (dBm) when it is known."""
+    if rssi is None:
+        return struct.pack("<BBHI", 0, 0, 8, 0)
+    return struct.pack("<BBHIb", 0, 0, 9, 0x20, rssi)
+
+
 class PcapWriter:
-    """Minimal libpcap writer — DLT_IEEE802_11 (105), open in Wireshark directly."""
-    _GLOBAL = struct.pack("<IHHiIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 105)
+    """Minimal libpcap writer — DLT_IEEE802_11_RADIO (127), so Wireshark
+    shows the RSSI next to each frame."""
+    _GLOBAL = struct.pack("<IHHiIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 127)
 
     def __init__(self, path: str):
         self._f = open(path, "wb")
         self._f.write(self._GLOBAL)
 
-    def write(self, sec: int, usec: int, data: bytes):
-        n = len(data)
+    def write(self, sec: int, usec: int, data: bytes, rssi: int | None = None):
+        rt = radiotap_header(rssi)
+        n = len(rt) + len(data)
         self._f.write(struct.pack("<IIII", sec, usec, n, n))
+        self._f.write(rt)
         self._f.write(data)
         self._f.flush()
 
@@ -191,20 +208,35 @@ class PcapWriter:
 # ---------------------------------------------------------------------------
 
 class FrameReader:
-    """Stateful resync parser: scans a byte stream for ITS5 frames."""
+    """Stateful resync parser: scans a byte stream for ITS5 frames.
+    After each yielded frame, ``rssi`` holds its RSSI in dBm (or None)."""
     def __init__(self):
         self._buf = bytearray()
+        self._pending = None          # (rssi, usec_lo) from the last ITSR
+        self.rssi = None
 
     def feed(self, chunk: bytes):
         self._buf.extend(chunk)
         while True:
-            idx = self._buf.find(MAGIC)
+            idx = self._buf.find(b"ITS")
+            while idx >= 0 and self._buf[idx:idx + 4] not in (MAGIC, RSSI_MAGIC) \
+                    and len(self._buf) >= idx + 4:
+                idx = self._buf.find(b"ITS", idx + 1)
             if idx < 0:
                 if len(self._buf) > 3:
                     del self._buf[: len(self._buf) - 3]
                 return
             if idx > 0:
                 del self._buf[:idx]
+            if len(self._buf) < 4:
+                return
+            if self._buf[:4] == RSSI_MAGIC:
+                if len(self._buf) < RSSI_LEN:
+                    return
+                rssi, usec_lo = struct.unpack_from("<bH", self._buf, 4)
+                self._pending = (rssi, usec_lo)
+                del self._buf[:RSSI_LEN]
+                continue
             if len(self._buf) < HEADER_LEN:
                 return
             _, sec, usec, plen = struct.unpack_from(HEADER_FMT, self._buf, 0)
@@ -215,6 +247,8 @@ class FrameReader:
                 return
             payload = bytes(self._buf[HEADER_LEN: HEADER_LEN + plen])
             del self._buf[: HEADER_LEN + plen]
+            p, self._pending = self._pending, None
+            self.rssi = p[0] if p and p[1] == (usec & 0xFFFF) else None
             yield sec, usec, payload
 
 
@@ -477,7 +511,7 @@ def main():
     p.add_argument("--no-browser", action="store_true",
                    help="suppress automatic browser opening")
     p.add_argument("--pcap-out", default="",
-                   help="write all captured frames to a .pcap file (DLT_IEEE802_11)")
+                   help="write all captured frames to a .pcap file (radiotap + 802.11)")
     p.add_argument("--download-logs", action="store_true",
                    help="download the receiver's SD-card logs (+ PCAP) and exit")
     p.add_argument("--logs-out", default="",
@@ -660,7 +694,8 @@ def main():
 
                             if args.dashboard_port:
                                 evt = {"n": n_frames, "sec": sec, "usec": usec,
-                                       "len": len(payload), "hex": payload[:48].hex()}
+                                       "len": len(payload), "hex": payload[:48].hex(),
+                                       "rssi": reader.rssi}
                                 evt.update(decoded)
                                 dashboard_server.broadcast_frame(evt)
 
@@ -672,11 +707,11 @@ def main():
                                         pass
 
                             if pcap:
-                                pcap.write(sec, usec, payload)
+                                pcap.write(sec, usec, payload, reader.rssi)
 
                             with rec_lock:
                                 if rec["pcap"]:
-                                    rec["pcap"].write(sec, usec, payload)
+                                    rec["pcap"].write(sec, usec, payload, reader.rssi)
                                     rec["frames"] += 1
                                     if rec["frames"] % 50 == 0:
                                         dashboard_server.update_record_state({

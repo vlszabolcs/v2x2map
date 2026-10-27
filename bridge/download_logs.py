@@ -8,13 +8,14 @@ Download the standalone SD-card logs from a V2X2MAP receiver over USB.
     python download_logs.py --port COM7 --out logs/
 
 Each log is saved as <out>/<node>/NNNNNNNN.its (raw record stream, resumable)
-and converted to NNNNNNNN.pcap (link type 105, Wireshark). Frames recorded
+and converted to NNNNNNNN.pcap (radiotap + 802.11 with RSSI, Wireshark). Frames recorded
 before the receiver knew the time are fixed up with the log's time-sync record.
 
 Wire format (little-endian), shared with the live stream:
     "ITS5" sec u32 usec u32 len u16 payload       captured frame
     "ITSJ" len u16 json                           reply / meta record
     "ITSL" file u32 offset u32 len u16 data crc32 log chunk
+    "ITSR" rssi i8 usec_lo u16                    RSSI of the next frame
 """
 
 import argparse
@@ -35,18 +36,20 @@ CHUNK = 4096
 # ── record parsing ─────────────────────────────────────────────────────────
 
 class RecordReader:
-    """Resync parser yielding ('frame', sec, usec, payload) / ('json', obj) /
-    ('chunk', file, offset, data, crc_ok)."""
+    """Resync parser yielding ('frame', sec, usec, payload, rssi) /
+    ('json', obj) / ('chunk', file, offset, data, crc_ok). rssi is the dBm
+    value from a preceding ITSR record, or None."""
 
     def __init__(self):
         self.buf = bytearray()
+        self.pending = None
 
     def feed(self, data: bytes):
         self.buf += data
         out = []
         while True:
             idx = -1
-            for m in (b"ITS5", b"ITSJ", b"ITSL"):
+            for m in (b"ITS5", b"ITSJ", b"ITSL", b"ITSR"):
                 i = self.buf.find(m)
                 if i >= 0 and (idx < 0 or i < idx):
                     idx = i
@@ -63,8 +66,15 @@ class RecordReader:
                     del self.buf[:4]; continue
                 if len(self.buf) < 14 + ln:
                     return out
-                out.append(("frame", sec, usec, bytes(self.buf[14:14 + ln])))
+                p, self.pending = self.pending, None
+                rssi = p[0] if p and p[1] == (usec & 0xFFFF) else None
+                out.append(("frame", sec, usec, bytes(self.buf[14:14 + ln]), rssi))
                 del self.buf[:14 + ln]
+            elif kind == b"R":
+                if len(self.buf) < 7:
+                    return out
+                self.pending = struct.unpack_from("<bH", self.buf, 4)
+                del self.buf[:7]
             elif kind == b"J":
                 if len(self.buf) < 6:
                     return out
@@ -104,15 +114,20 @@ def its_to_pcap(src: str, dst: str) -> int:
             break
     n = 0
     with open(dst, "wb") as out:
-        out.write(struct.pack("<IHHiIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 105))
+        # radiotap + 802.11, so Wireshark shows the RSSI of each frame
+        out.write(struct.pack("<IHHiIII", 0xA1B2C3D4, 2, 4, 0, 0, 65535, 127))
         for r in recs:
             if r[0] != "frame":
                 continue
-            _, sec, usec, payload = r
+            _, sec, usec, payload, rssi = r
             t = sec * 1_000_000 + usec
             if sec < 1_000_000_000 and offset_us is not None:
                 t += offset_us
-            out.write(struct.pack("<IIII", t // 1_000_000, t % 1_000_000, len(payload), len(payload)))
+            rt = (struct.pack("<BBHI", 0, 0, 8, 0) if rssi is None
+                  else struct.pack("<BBHIb", 0, 0, 9, 0x20, rssi))
+            ln = len(rt) + len(payload)
+            out.write(struct.pack("<IIII", t // 1_000_000, t % 1_000_000, ln, ln))
+            out.write(rt)
             out.write(payload)
             n += 1
     return n

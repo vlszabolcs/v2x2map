@@ -224,11 +224,12 @@ static void put_record(const uint8_t *hdr, size_t hlen, const void *body, size_t
     xSemaphoreGive(s_in_mtx);
 }
 
-void sdlog_write_frame(uint32_t sec, uint32_t usec, const void *payload, uint16_t len)
+void sdlog_write_frame(uint32_t sec, uint32_t usec, const void *payload, uint16_t len, int8_t rssi)
 {
-    uint8_t h[REC_FRAME_HDR];
-    rec_frame_hdr(h, sec, usec, len);
-    put_record(h, sizeof(h), payload, len);
+    uint8_t h[REC_RSSI_LEN + REC_FRAME_HDR];
+    size_t n = rec_rssi(h, rssi, usec);
+    rec_frame_hdr(h + n, sec, usec, len);
+    put_record(h, n + REC_FRAME_HDR, payload, len);
 }
 
 void sdlog_write_json(const char *json, uint16_t len)
@@ -328,8 +329,8 @@ int sdlog_delete(uint32_t id)
 #else /* no SD logging */
 
 void sdlog_init(void) {}
-void sdlog_write_frame(uint32_t sec, uint32_t usec, const void *payload, uint16_t len)
-{ (void)sec; (void)usec; (void)payload; (void)len; }
+void sdlog_write_frame(uint32_t sec, uint32_t usec, const void *payload, uint16_t len, int8_t rssi)
+{ (void)sec; (void)usec; (void)payload; (void)len; (void)rssi; }
 void sdlog_write_json(const char *json, uint16_t len) { (void)json; (void)len; }
 void sdlog_get_status(sdlog_status_t *st) { *st = (sdlog_status_t){0}; }
 int  sdlog_list(sdlog_file_t *out, int max) { (void)out; (void)max; return 0; }

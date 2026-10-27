@@ -1,0 +1,48 @@
+name: Firmware
+
+on:
+  push:
+    paths:
+      - "firmware/**"
+      - ".github/workflows/firmware.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - board: waveshare
+            defaults: "sdkconfig"
+          - board: tdongle-c5
+            defaults: "sdkconfig;sdkconfig.defaults.tdongle-c5"
+          - board: tdongle-c5-gnss
+            defaults: "sdkconfig;sdkconfig.defaults.tdongle-c5;sdkconfig.defaults.tdongle-c5-gnss"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build (${{ matrix.board }})
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v6.1
+          target: esp32c5
+          path: firmware
+          command: >-
+            idf.py -B build-${{ matrix.board }}
+            -D SDKCONFIG=build-${{ matrix.board }}/sdkconfig
+            -D SDKCONFIG_DEFAULTS="${{ matrix.defaults }}"
+            set-target esp32c5 build &&
+            cd build-${{ matrix.board }} &&
+            python -m esptool --chip esp32c5 merge-bin -o v2x2map-${{ matrix.board }}-merged.bin @flash_args
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: v2x2map-${{ matrix.board }}
+          path: |
+            firmware/build-${{ matrix.board }}/v2x2map-${{ matrix.board }}-merged.bin
+            firmware/build-${{ matrix.board }}/*.bin
+            firmware/build-${{ matrix.board }}/bootloader/bootloader.bin
+            firmware/build-${{ matrix.board }}/partition_table/partition-table.bin
+            firmware/build-${{ matrix.board }}/flash_args

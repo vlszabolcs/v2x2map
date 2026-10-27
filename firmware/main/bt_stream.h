@@ -18,7 +18,7 @@ typedef enum {
 } ble_mode_t;
 
 void bt_stream_init(void);
-void bt_stream_publish_packet(const uint8_t *payload, uint16_t len, uint32_t sec, uint32_t usec);
+void bt_stream_publish_packet(const uint8_t *payload, uint16_t len, uint32_t sec, uint32_t usec, int8_t rssi);
 
 /** Queue a pre-framed record (ITSJ / ITSL) on the notify stream. */
 void bt_stream_send_record(const uint8_t *buf, size_t len);

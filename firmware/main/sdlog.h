@@ -29,7 +29,7 @@ typedef struct {
 /** Mount the card (if CONFIG_ENABLE_SD) and start the writer task. */
 void sdlog_init(void);
 
-void sdlog_write_frame(uint32_t sec, uint32_t usec, const void *payload, uint16_t len);
+void sdlog_write_frame(uint32_t sec, uint32_t usec, const void *payload, uint16_t len, int8_t rssi);
 void sdlog_write_json(const char *json, uint16_t len);
 
 void sdlog_get_status(sdlog_status_t *st);
