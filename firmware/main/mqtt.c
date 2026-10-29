@@ -99,6 +99,22 @@ static void drain_task(void *arg)
     }
 }
 
+/* Allocated on the first mqtt_start() only: in BLE/USB-only mode MQTT never
+ * runs and the RAM stays free for NimBLE. */
+static void buffer_init(void)
+{
+    if (BUF_BYTES == 0 || s_buf) return;
+    s_buf = xMessageBufferCreate(BUF_BYTES);
+    if (!s_buf_mtx) s_buf_mtx = xSemaphoreCreateMutex();
+    if (s_buf && s_buf_mtx) {
+        xTaskCreate(drain_task, "mqtt_drain", 3072, NULL, 3, &s_drain_task);
+        ESP_LOGI(TAG, "offline buffer %u KB", (unsigned)CONFIG_MQTT_BUFFER_KB);
+    } else {
+        ESP_LOGE(TAG, "offline buffer: out of memory");
+        if (s_buf) { vMessageBufferDelete(s_buf); s_buf = NULL; }
+    }
+}
+
 size_t mqtt_backlog(void) { return s_backlog; }
 
 bool mqtt_is_connected(void) { return client && connected; }
@@ -279,6 +295,8 @@ void mqtt_start(void)
         return;
     }
 
+    buffer_init();
+
     if (make_topic_prefix() != ESP_OK)
     {
         ESP_LOGW(TAG, "make_topic_prefix failed");
@@ -403,15 +421,4 @@ void mqtt_init(void)
     };
     ESP_ERROR_CHECK(esp_timer_create(&create_args, &stats_timer_handle));
 
-    if (BUF_BYTES > 0) {
-        s_buf = xMessageBufferCreate(BUF_BYTES);
-        s_buf_mtx = xSemaphoreCreateMutex();
-        if (s_buf && s_buf_mtx) {
-            xTaskCreate(drain_task, "mqtt_drain", 3072, NULL, 3, &s_drain_task);
-            ESP_LOGI(TAG, "offline buffer %u KB", (unsigned)CONFIG_MQTT_BUFFER_KB);
-        } else {
-            ESP_LOGE(TAG, "offline buffer: out of memory");
-            if (s_buf) { vMessageBufferDelete(s_buf); s_buf = NULL; }
-        }
-    }
 }

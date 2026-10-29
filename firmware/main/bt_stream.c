@@ -426,6 +426,7 @@ static int gap_event_cb(struct ble_gap_event *ev, void *arg)
             ble_gap_update_params(s_conn_handle, &up);
         } else {
             ESP_LOGW(TAG, "connect failed status=%d", ev->connect.status);
+            dbg_printf("[bt] connect failed status=%d", ev->connect.status);
         }
         break;
     case BLE_GAP_EVENT_DISCONNECT: {
