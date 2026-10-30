@@ -27,5 +27,8 @@ void ctrl_init(void);
 /** Queue a command line (without newline) for execution. */
 void ctrl_submit(const char *line, ctrl_channel_t ch);
 
+/** Why the chip last reset ("poweron", "panic", "brownout", "task_wdt", …). */
+const char *ctrl_reset_reason(void);
+
 /** Build and send an ITSJ record on a channel. */
 void ctrl_send_json(ctrl_channel_t ch, const char *json, uint16_t len);

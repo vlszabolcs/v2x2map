@@ -11,6 +11,7 @@
 #include "freertos/queue.h"
 
 #include "esp_err.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_coexist.h"
@@ -585,6 +586,17 @@ static void radio_task(void *arg)
         int64_t now = esp_timer_get_time();
         uint32_t gen = s_mode_gen;
 
+        /* Heartbeat on the USB debug stream: shows how far a run got before
+         * a hang or reset, and whether internal RAM is running out */
+        static int64_t s_hb_us;
+        if (now - s_hb_us >= 10000000LL) {
+            s_hb_us = now;
+            dbg_printf("[hb] up=%lld mode=%s heap=%u min=%u",
+                       (long long)(now / 1000000), bt_stream_mode_name(),
+                       (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                       (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
+        }
+
         /* Expiries */
         if (CONFIG_BLE_WINDOW_S > 0 && s_mode == BLE_MODE_OPEN && now > s_open_until_us) {
             set_mode(BLE_MODE_OFF); continue;
@@ -713,6 +725,8 @@ void bt_stream_init(void)
     }
 
     cfg_load();
+    dbg_printf("[boot] reset=%s heap=%u", ctrl_reset_reason(),
+               (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     dbg_printf("[bt] cfg load: %u/%u %u/%u",
                CYC_DISC_SNIFF, CYC_DISC_BLE, CYC_CONN_SNIFF, CYC_CONN_BLE);
 

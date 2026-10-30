@@ -10,7 +10,9 @@
 #include <string.h>
 
 #include "esp_app_desc.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -90,7 +92,7 @@ static void cmd_status(ctrl_channel_t ch)
           "\"clock\":%s,\"ble\":\"%s\",\"usb_host\":%s,"
           "\"sd\":{\"ok\":%s,\"cur\":%lu,\"free_mb\":%llu,\"total_mb\":%llu,\"drop\":%lu},"
           "\"gnss\":{\"on\":%s,\"present\":%s,\"sleep\":%s,\"fix\":%u,\"sats\":%u},"
-          "\"client_pos\":%s}",
+          "\"client_pos\":%s,\"rst\":\"%s\",\"heap\":%u,\"heap_min\":%u}",
           node, esp_app_get_description()->version, CONFIG_HW_VARIANT,
           (long long)(esp_timer_get_time() / 1000000),
           clock_valid() ? (clock_source() == CLOCK_SRC_GNSS ? "\"gnss\"" : "\"client\"") : "null",
@@ -99,7 +101,28 @@ static void cmd_status(ctrl_channel_t ch)
           (unsigned long long)(sd.free_bytes >> 20), (unsigned long long)(sd.total_bytes >> 20),
           (unsigned long)sd.dropped,
           g.enabled ? "true" : "false", g.present ? "true" : "false", g.asleep ? "true" : "false",
-          g.fix, g.sats, gnss_client_fresh() ? "true" : "false");
+          g.fix, g.sats, gnss_client_fresh() ? "true" : "false",
+          ctrl_reset_reason(),
+          (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+          (unsigned)heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
+}
+
+const char *ctrl_reset_reason(void)
+{
+    switch (esp_reset_reason()) {
+    case ESP_RST_POWERON:  return "poweron";
+    case ESP_RST_SW:       return "sw";
+    case ESP_RST_PANIC:    return "panic";
+    case ESP_RST_INT_WDT:  return "int_wdt";
+    case ESP_RST_TASK_WDT: return "task_wdt";
+    case ESP_RST_WDT:      return "wdt";
+    case ESP_RST_BROWNOUT: return "brownout";
+    case ESP_RST_USB:      return "usb";
+    case ESP_RST_JTAG:     return "jtag";
+    case ESP_RST_DEEPSLEEP:return "deepsleep";
+    case ESP_RST_EXT:      return "ext";
+    default:               return "other";
+    }
 }
 
 static void cmd_log_list(ctrl_channel_t ch)
