@@ -448,4 +448,23 @@
     </string-array>
     <string name="cam_lights_age">(Licht: zuletzt vor %1$.1f s empfangen)</string>
     <string name="cam_label_raw">Rohbits</string>
+
+    <!-- Nearby vehicle notifications -->
+    <string name="near_channel_summary">Fahrzeuge in der Nähe</string>
+    <string name="near_channel_alert">Fahrzeugwarnungen</string>
+    <string name="near_title">%1$d Fahrzeuge in der Nähe</string>
+    <string name="near_ahead">Vor dir</string>
+    <string name="near_behind">Hinter dir</string>
+    <string name="near_left">Links</string>
+    <string name="near_right">Rechts</string>
+    <string name="near_nearby">In der Nähe</string>
+    <string name="near_same_dir">gleiche Richtung</string>
+    <string name="near_oncoming">Gegenverkehr</string>
+    <string name="near_braking">bremst</string>
+    <string name="near_accelerating">beschleunigt</string>
+    <string name="near_alert_ebrake">NOTBREMSUNG vor dir, %1$d m</string>
+    <string name="near_alert_brake">Fahrzeug vor dir bremst, %1$d m</string>
+    <string name="near_alert_indicator">%1$s %2$d m: %3$s</string>
+    <string name="near_setting_label">Fahrzeuge in der Nähe melden (CAM)</string>
+    <string name="near_setting_hint">Zeigt das nächste Fahrzeug vor und hinter dir, bezogen auf GPS und Fahrtrichtung des Telefons, und warnt, wenn ein Fahrzeug vor dir stark bremst oder in der Nähe blinkt. Benötigt den Standort.</string>
 </resources>

@@ -96,6 +96,12 @@ class SettingsActivity : AppCompatActivity() {
         binding.swAutoRecord.isChecked = Prefs.autoRecord(this)
         binding.swAutoRecord.setOnCheckedChangeListener { _, c -> Prefs.setAutoRecord(this, c) }
 
+        binding.swNearby.isChecked = Prefs.nearbyNotify(this)
+        binding.swNearby.setOnCheckedChangeListener { _, c ->
+            Prefs.setNearbyNotify(this, c)
+            if (!c) getSystemService(android.app.NotificationManager::class.java).cancel(20)
+        }
+
         // --- Receiver GNSS / background -------------------------------------
         binding.swReceiverGnss.isChecked = Prefs.receiverGnss(this)
         binding.swReceiverGnss.setOnCheckedChangeListener { _, c -> Prefs.setReceiverGnss(this, c) }

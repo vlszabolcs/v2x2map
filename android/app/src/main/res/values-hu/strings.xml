@@ -438,4 +438,23 @@
     </string-array>
     <string name="cam_lights_age">(fények: utoljára %1$.1f s-a érkezett)</string>
     <string name="cam_label_raw">Nyers bitek</string>
+
+    <!-- Nearby vehicle notifications -->
+    <string name="near_channel_summary">Közeli járművek</string>
+    <string name="near_channel_alert">Jármű figyelmeztetések</string>
+    <string name="near_title">%1$d jármű a közelben</string>
+    <string name="near_ahead">Előtted</string>
+    <string name="near_behind">Mögötted</string>
+    <string name="near_left">Balra</string>
+    <string name="near_right">Jobbra</string>
+    <string name="near_nearby">A közelben</string>
+    <string name="near_same_dir">azonos irány</string>
+    <string name="near_oncoming">szembejövő</string>
+    <string name="near_braking">lassít / fékez</string>
+    <string name="near_accelerating">gyorsít</string>
+    <string name="near_alert_ebrake">VÉSZFÉKEZÉS előtted, %1$d m</string>
+    <string name="near_alert_brake">Előtted fékez egy jármű, %1$d m</string>
+    <string name="near_alert_indicator">%1$s %2$d m: %3$s</string>
+    <string name="near_setting_label">Közeli járművek értesítésben (CAM)</string>
+    <string name="near_setting_hint">Megmutatja a legközelebbi előtted és mögötted haladó járművet a telefon GPS-éhez és haladási irányához képest, és felugró figyelmeztetést ad, ha egy előtted haladó jármű erősen fékez, vagy egy közeli jármű indexel. Helymeghatározás kell hozzá.</string>
 </resources>

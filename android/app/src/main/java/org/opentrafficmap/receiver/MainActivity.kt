@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     private var bt: BluetoothController? = null
     private val mqttBridges = mutableListOf<MqttBridge>()
     private lateinit var recorder: FrameRecorder
+    private lateinit var camNotifier: CamNotifier
     private lateinit var locationOverlay: MyLocationNewOverlay
     private lateinit var fused: FusedLocationProviderClient
     private lateinit var markers: MarkerLayer
@@ -137,6 +138,7 @@ class MainActivity : AppCompatActivity() {
     private fun onPosition(loc: Location) {
         lastSpeedMps = if (loc.hasSpeed()) loc.speed else 0f
         lastLocation = loc
+        if (::camNotifier.isInitialized) camNotifier.updateOwn(loc)
         if (followEnabled) followLocation(loc)
         if (ownTrackEnabled && ::binding.isInitialized)
             runOnUiThread { addOwnTrackPoint(GeoPoint(loc.latitude, loc.longitude)) }
@@ -219,6 +221,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         recorder = FrameRecorder(this)
+        camNotifier = CamNotifier(this)
         fused    = LocationServices.getFusedLocationProviderClient(this)
         followEnabled   = Prefs.followEnabled(this)
         ownTrackEnabled = Prefs.ownTrackEnabled(this)
@@ -474,6 +477,7 @@ class MainActivity : AppCompatActivity() {
         SettingsBus.liveBtController = null
         LogReplay.listener = null
         DeviceLink.removeJsonListener(onDeviceJson)
+        if (::camNotifier.isInitialized) camNotifier.stop()
         mainHandler.removeCallbacks(autoStopRunnable)
         if (::replay.isInitialized) replay.stop()
         DeviceLink.usbSender = null
@@ -939,6 +943,7 @@ class MainActivity : AppCompatActivity() {
                 geiger.click(f.msgType)
                 if (f.msgType.name in mqttFilter) mqttBridges.forEach { it.publish(f.payload) }
                 if (recorder.isRecording) recorder.append(f)
+                if (f.msgType == ItsG5Decoder.MsgType.CAM) camNotifier.onFrame(f)
                 rateWindow.add(System.currentTimeMillis())
                 binding.activityBars.hit()
             }
@@ -959,6 +964,7 @@ class MainActivity : AppCompatActivity() {
                 geiger.click(f.msgType)
                 if (f.msgType.name in mqttFilter) mqttBridges.forEach { it.publish(f.payload) }
                 if (recorder.isRecording) recorder.append(f)
+                if (f.msgType == ItsG5Decoder.MsgType.CAM) camNotifier.onFrame(f)
                 rateWindow.add(System.currentTimeMillis())
                 binding.activityBars.hit()
             }
@@ -1036,6 +1042,7 @@ class MainActivity : AppCompatActivity() {
             updateChipCounts(counts)
             binding.activityBars.tick()
             adapter.refreshAges()
+            if (::camNotifier.isInitialized) camNotifier.tick()
             renderConnPill(rate)
             if (::markers.isInitialized) markers.prune()
             ReceiverForegroundService.instance?.updateStats(totalFrames.toInt(), rate)

@@ -461,4 +461,23 @@
     </string-array>
     <string name="cam_lights_age">(lights: last received %1$.1f s ago)</string>
     <string name="cam_label_raw">Raw bits</string>
+
+    <!-- Nearby vehicle notifications -->
+    <string name="near_channel_summary">Nearby vehicles</string>
+    <string name="near_channel_alert">Vehicle alerts</string>
+    <string name="near_title">%1$d vehicles nearby</string>
+    <string name="near_ahead">Ahead</string>
+    <string name="near_behind">Behind</string>
+    <string name="near_left">Left</string>
+    <string name="near_right">Right</string>
+    <string name="near_nearby">Nearby</string>
+    <string name="near_same_dir">same direction</string>
+    <string name="near_oncoming">oncoming</string>
+    <string name="near_braking">braking</string>
+    <string name="near_accelerating">accelerating</string>
+    <string name="near_alert_ebrake">EMERGENCY BRAKE ahead, %1$d m</string>
+    <string name="near_alert_brake">Vehicle ahead braking, %1$d m</string>
+    <string name="near_alert_indicator">%1$s %2$d m: %3$s</string>
+    <string name="near_setting_label">Notify about nearby vehicles (CAM)</string>
+    <string name="near_setting_hint">Shows the closest vehicle ahead and behind, relative to the phone\'s GPS and direction of travel, and pops up an alert when a vehicle ahead brakes hard or a vehicle close by starts indicating. Needs location.</string>
 </resources>

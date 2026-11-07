@@ -150,6 +150,10 @@ object Prefs {
     fun autoRecord(ctx: Context): Boolean = prefs(ctx).getBoolean("auto_record", false)
     fun setAutoRecord(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("auto_record", on) }
 
+    /** Nearby vehicles (CAM) as notifications: summary + heads-up alerts. */
+    fun nearbyNotify(ctx: Context): Boolean = prefs(ctx).getBoolean("nearby_notify", false)
+    fun setNearbyNotify(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("nearby_notify", on) }
+
     /** Use the receiver's GNSS fix (when it has one) instead of the phone's GPS. */
     fun receiverGnss(ctx: Context): Boolean = prefs(ctx).getBoolean("receiver_gnss", false)
     fun setReceiverGnss(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("receiver_gnss", on) }
