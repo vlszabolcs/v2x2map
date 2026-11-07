@@ -446,4 +446,6 @@
         <item>Reserviert 14</item>
         <item>Reserviert 15</item>
     </string-array>
+    <string name="cam_lights_age">(Licht: zuletzt vor %1$.1f s empfangen)</string>
+    <string name="cam_label_raw">Rohbits</string>
 </resources>

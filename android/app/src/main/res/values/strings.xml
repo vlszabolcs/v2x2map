@@ -459,4 +459,6 @@
         <item>Reserved 14</item>
         <item>Reserved 15</item>
     </string-array>
+    <string name="cam_lights_age">(lights: last received %1$.1f s ago)</string>
+    <string name="cam_label_raw">Raw bits</string>
 </resources>

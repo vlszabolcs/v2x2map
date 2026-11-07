@@ -69,7 +69,7 @@ class FrameLogAdapter(
             entry.lastSeen   = clock()
             entry.lastSecured = frame.secured
             entry.lastLatLon  = frame.latLon ?: entry.lastLatLon
-            frame.cam?.let { CamFormat.remember(it) }
+            frame.cam?.let { CamFormat.remember(it, clock()) }
             entry.recentFrames.addFirst(frame)
             if (entry.recentFrames.size > FRAME_HISTORY) entry.recentFrames.removeLast()
         }
@@ -146,7 +146,9 @@ class FrameLogAdapter(
         val rssi = f?.rssi?.let { " · $it dBm" } ?: ""
         vh.summary.text = "${entry.msgType.short} · $sid · ${entry.frameCount}×$rssi"
         // CAM vehicle state: indicators, pedals, lights …
-        val camState = f?.cam?.let { CamFormat.summary(ctx, it) }.orEmpty()
+        // Only while the vehicle is still heard: a stale row must not keep an old state
+        val camState = f?.cam?.takeIf { now - entry.lastSeen <= CamFormat.MAX_AGE_MS }
+            ?.let { CamFormat.summary(ctx, it, now) }.orEmpty()
         vh.state.text = camState
         vh.state.visibility = if (camState.isEmpty()) View.GONE else View.VISIBLE
 

@@ -37,6 +37,7 @@ object CamParser {
         val lights: Int?,                 // 8 bits, see [L_LOW_BEAM] …
         val pathPoints: Int?,
         val rsu: Boolean,
+        val protocolVersion: Int = 2,
     ) {
         fun ac(bit: Int) = accelControl?.let { it and bit != 0 }
         fun light(bit: Int) = lights?.let { it and bit != 0 }
@@ -73,10 +74,10 @@ object CamParser {
         if ((p[its + 1].toInt() and 0xFF) != 2) return null   // messageID = CAM
         val sid = ((p[its + 2].toLong() and 0xFF) shl 24) or ((p[its + 3].toLong() and 0xFF) shl 16) or
                   ((p[its + 4].toLong() and 0xFF) shl 8) or (p[its + 5].toLong() and 0xFF)
-        return try { parseBody(Bits(p, its + 6), sid) } catch (_: Exception) { null }
+        return try { parseBody(Bits(p, its + 6), sid, ver) } catch (_: Exception) { null }
     }
 
-    private fun parseBody(b: Bits, sid: Long): Cam? {
+    private fun parseBody(b: Bits, sid: Long, ver: Int): Cam? {
         val gdt = b.bits(16)
         // CamParameters: ext bit + lowFrequency / specialVehicle present
         b.bit()
@@ -95,7 +96,7 @@ object CamParser {
         if (b.bit() == 1) return null
         if (b.bit() == 1) {
             return Cam(sid, gdt, stationType, altOrNull(alt), null, null, 2, null, null, null,
-                null, null, null, null, null, null, null, null, null, null, rsu = true)
+                null, null, null, null, null, null, null, null, null, null, rsu = true, protocolVersion = ver)
         }
 
         // BasicVehicleContainerHighFrequency: 7 OPTIONAL flags
@@ -116,7 +117,7 @@ object CamParser {
         val curv = b.bits(11) - 1023; b.bits(3)
         b.bit(); b.bits(2)                // CurvatureCalculationMode (extensible enum)
         val yaw = b.bits(16) - 32766
-        b.bit(); b.bits(4)                // YawRateConfidence (extensible enum)
+        b.bits(4)                         // YawRateConfidence (9 values, NOT extensible)
         val accCtl = if (accPres) rev(b.bits(7), 7) else null
         val lane = if (lanePres) b.bits(4) - 1 else null
         val steer = if (steerPres) (b.bits(10) - 511).also { b.bits(7) } else null
@@ -164,6 +165,7 @@ object CamParser {
             lights = lights,
             pathPoints = path,
             rsu = false,
+            protocolVersion = ver,
         )
     }
 

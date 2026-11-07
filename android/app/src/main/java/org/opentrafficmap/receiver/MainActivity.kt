@@ -258,7 +258,7 @@ class MainActivity : AppCompatActivity() {
         reader.onLogChunk = DeviceLink::dispatchChunk
         LogReplay.listener = { f -> runOnUiThread { replayLog(f) } }
 
-        adapter = FrameLogAdapter(this) { f -> FrameDetailSheet.show(this, f) }
+        adapter = FrameLogAdapter(this) { f -> FrameDetailSheet.show(this, f, adapter.clock()) }
         binding.log.layoutManager = LinearLayoutManager(this)
         binding.log.adapter = adapter
         replay = ReplayController(this, binding, markers, adapter,

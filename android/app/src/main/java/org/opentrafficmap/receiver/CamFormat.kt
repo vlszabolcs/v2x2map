@@ -13,29 +13,36 @@ import kotlin.math.abs
  */
 object CamFormat {
 
-    class LowFreq(val lights: Int, val role: Int)
+    /** [atMs]: when it was received (live or replay clock). */
+    class LowFreq(val lights: Int, val role: Int, val atMs: Long)
+
+    /** A state older than this is not shown: the low-frequency container comes
+     *  at least once a second while the vehicle is in range. */
+    const val MAX_AGE_MS = 2_000L
 
     private val lastLow = HashMap<Long, LowFreq>()
 
-    /** Remember the low-frequency part of [c]; call for every CAM shown. */
+    /** Remember the low-frequency part of [c]; call for every CAM received. */
     @Synchronized
-    fun remember(c: CamParser.Cam) {
+    fun remember(c: CamParser.Cam, nowMs: Long) {
         val l = c.lights ?: return
-        lastLow[c.stationId] = LowFreq(l, c.role ?: 0)
+        lastLow[c.stationId] = LowFreq(l, c.role ?: 0, nowMs)
         if (lastLow.size > 2000) lastLow.clear()
     }
 
+    /** Lights of this CAM, or the last ones of its station if recent enough. */
     @Synchronized
-    fun lowFor(c: CamParser.Cam): LowFreq? =
-        c.lights?.let { LowFreq(it, c.role ?: 0) } ?: lastLow[c.stationId]
+    fun lowFor(c: CamParser.Cam, nowMs: Long, maxAgeMs: Long = MAX_AGE_MS): LowFreq? =
+        c.lights?.let { LowFreq(it, c.role ?: 0, nowMs) }
+            ?: lastLow[c.stationId]?.takeIf { nowMs - it.atMs in 0..maxAgeMs }
 
     @Synchronized
     fun clear() = lastLow.clear()
 
     /** Compact state for the station list, e.g. "◀ Index · Brake · Low beam". Empty if nothing notable. */
-    fun summary(ctx: Context, c: CamParser.Cam): String {
+    fun summary(ctx: Context, c: CamParser.Cam, nowMs: Long): String {
         val parts = mutableListOf<String>()
-        val low = lowFor(c)
+        val low = lowFor(c, nowMs)
         low?.let { l ->
             val left = l.lights and CamParser.L_LEFT != 0
             val right = l.lights and CamParser.L_RIGHT != 0
@@ -63,8 +70,10 @@ object CamFormat {
         return parts.joinToString(" · ")
     }
 
+    private fun bitsStr(v: Int, n: Int) = (0 until n).joinToString("") { if (v and (1 shl it) != 0) "1" else "0" }
+
     /** Labelled rows for the detail sheet. */
-    fun rows(ctx: Context, c: CamParser.Cam): List<Pair<String, String>> {
+    fun rows(ctx: Context, c: CamParser.Cam, nowMs: Long = System.currentTimeMillis()): List<Pair<String, String>> {
         val r = mutableListOf<Pair<String, String>>()
         fun s(id: Int) = ctx.getString(id)
         fun yes(b: Boolean?) = when (b) { true -> s(R.string.cam_on); false -> s(R.string.cam_off); null -> "—" }
@@ -91,7 +100,8 @@ object CamFormat {
         }
 
         // Lights (last known if this CAM has no low-frequency container)
-        val low = lowFor(c)
+        // In the sheet a longer look-back is fine: the age is shown
+        val low = lowFor(c, nowMs, 60_000L)
         if (low != null) {
             val l = low.lights
             fun on(bit: Int) = yes(l and bit != 0)
@@ -108,7 +118,8 @@ object CamFormat {
             r += s(R.string.cam_fog) to on(CamParser.L_FOG)
             r += s(R.string.cam_reverse_light) to on(CamParser.L_REVERSE)
             r += s(R.string.cam_parking) to on(CamParser.L_PARKING)
-            if (c.lights == null) r += "" to s(R.string.cam_lights_last_known)
+            if (c.lights == null)
+                r += "" to ctx.getString(R.string.cam_lights_age, ((nowMs - low.atMs) / 1000.0).coerceAtLeast(0.0))
             val roles = ctx.resources.getStringArray(R.array.cam_vehicle_roles)
             r += s(R.string.cam_label_role) to (roles.getOrNull(low.role) ?: "${low.role}")
         } else {
@@ -137,6 +148,10 @@ object CamFormat {
                 c.widthM?.let { "%.1f".format(Locale.ROOT, it) } ?: "?")
         c.altitudeM?.let { r += s(R.string.cam_label_altitude) to "%.1f m".format(Locale.ROOT, it) }
         c.pathPoints?.let { r += s(R.string.cam_label_path) to "$it" }
+        // Raw bits (bit 0 first), to check the decoding against Wireshark
+        r += s(R.string.cam_label_raw) to "AC=%s  L=%s  v%d".format(Locale.ROOT,
+            c.accelControl?.let { bitsStr(it, 7) } ?: "—",
+            (c.lights ?: low?.lights)?.let { bitsStr(it, 8) } ?: "—", c.protocolVersion)
         return r
     }
 }

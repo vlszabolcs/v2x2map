@@ -14,7 +14,7 @@ object FrameDetailSheet {
 
     private val timeFmt = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
 
-    fun show(context: Context, f: Frame) {
+    fun show(context: Context, f: Frame, nowMs: Long = System.currentTimeMillis()) {
         val sheet = BottomSheetDialog(context)
         val view  = LayoutInflater.from(context).inflate(R.layout.dialog_frame_detail, null)
         sheet.setContentView(view)
@@ -23,7 +23,7 @@ object FrameDetailSheet {
             .backgroundTintList = android.content.res.ColorStateList.valueOf(f.msgType.color)
         view.findViewById<TextView>(R.id.detailTitle).text = titleFor(context, f)
         view.findViewById<TextView>(R.id.detailSize).text  = "${f.len} B"
-        view.findViewById<TextView>(R.id.detailMeta).text  = buildMeta(context, f)
+        view.findViewById<TextView>(R.id.detailMeta).text  = buildMeta(context, f, nowMs)
         view.findViewById<TextView>(R.id.detailHex).text   = hexDump(f.payload)
 
         sheet.show()
@@ -48,7 +48,7 @@ object FrameDetailSheet {
         }
     }
 
-    private fun buildMeta(ctx: Context, f: Frame): String {
+    private fun buildMeta(ctx: Context, f: Frame, nowMs: Long): String {
         val sb = StringBuilder()
         fun row(label: String, value: String) = sb.append("%-14s  %s\n".format(label, value))
 
@@ -90,7 +90,7 @@ object FrameDetailSheet {
 
         f.cam?.let { cam ->
             sb.append('\n')
-            for ((label, value) in CamFormat.rows(ctx, cam)) {
+            for ((label, value) in CamFormat.rows(ctx, cam, nowMs)) {
                 if (label.isEmpty()) sb.append("%-14s  %s\n".format("", value)) else row(label, value)
             }
         }

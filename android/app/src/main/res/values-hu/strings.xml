@@ -436,4 +436,6 @@
         <item>Fenntartott 14</item>
         <item>Fenntartott 15</item>
     </string-array>
+    <string name="cam_lights_age">(fények: utoljára %1$.1f s-a érkezett)</string>
+    <string name="cam_label_raw">Nyers bitek</string>
 </resources>
