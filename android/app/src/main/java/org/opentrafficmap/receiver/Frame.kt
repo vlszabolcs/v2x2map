@@ -19,6 +19,7 @@ data class Frame(
     val spatPhase: SpatTemParser.Phase? = null,
     val secured: Boolean? = null,   // GN Basic Header NH==2 → IEEE 1609.2 signed packet
     val denmCause: DenmParser.Cause? = null,
+    val cam: CamParser.Cam? = null,  // decoded CAM vehicle data (lights, pedals, size …)
     val rssi: Int? = null,          // dBm, from the receiver's ITSR record (null on old firmware)
 ) {
     val len: Int get() = payload.size

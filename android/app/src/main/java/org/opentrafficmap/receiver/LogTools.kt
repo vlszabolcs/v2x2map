@@ -54,7 +54,56 @@ object LogTools {
         }
     }
 
-    fun parse(file: File): Parsed {
+    fun parse(file: File): Parsed =
+        if (isPcap(file)) parsePcap(file) else parseRecords(file)
+
+    private fun isPcap(file: File): Boolean = try {
+        file.inputStream().use { i ->
+            val m = ByteArray(4)
+            i.read(m) == 4 && ByteBuffer.wrap(m).order(ByteOrder.LITTLE_ENDIAN).int.let {
+                it == 0xa1b2c3d4.toInt() || it == 0xd4c3b2a1.toInt()
+            }
+        }
+    } catch (_: Exception) { false }
+
+    /** PCAP from older app versions (link type 105 = raw 802.11, or 127 =
+     *  radiotap + 802.11). No route: those recordings did not store one. */
+    private fun parsePcap(file: File): Parsed {
+        val frames = mutableListOf<Frame>()
+        java.io.DataInputStream(file.inputStream().buffered()).use { inp ->
+            val gh = ByteArray(24)
+            inp.readFully(gh)
+            val ghb = ByteBuffer.wrap(gh).order(ByteOrder.LITTLE_ENDIAN)
+            val order = if (ghb.getInt(0) == 0xa1b2c3d4.toInt()) ByteOrder.LITTLE_ENDIAN else ByteOrder.BIG_ENDIAN
+            val link = ByteBuffer.wrap(gh).order(order).getInt(20)
+            val rh = ByteArray(16)
+            var seq = 0L
+            while (true) {
+                try { inp.readFully(rh) } catch (_: java.io.EOFException) { break }
+                val rb = ByteBuffer.wrap(rh).order(order)
+                val sec = rb.getInt(0).toLong() and 0xFFFFFFFFL
+                val usec = rb.getInt(4).toLong() and 0xFFFFFFFFL
+                val incl = rb.getInt(8)
+                if (incl < 0 || incl > 262144) break
+                val data = ByteArray(incl)
+                try { inp.readFully(data) } catch (_: java.io.EOFException) { break }
+                var payload = data
+                var rssi: Int? = null
+                if (link == 127 && data.size >= 8) {
+                    val rt = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
+                    val rtLen = rt.getShort(2).toInt() and 0xFFFF
+                    val present = rt.getInt(4)
+                    // Only the layout this app writes: antenna signal as the sole field
+                    if (present == 0x20 && rtLen >= 9) rssi = data[8].toInt()
+                    if (rtLen in 8..data.size) payload = data.copyOfRange(rtLen, data.size)
+                }
+                frames += FrameReader.decodeFrame(++seq, sec, usec, payload, rssi)
+            }
+        }
+        return Parsed(frames, emptyList(), null, null)
+    }
+
+    private fun parseRecords(file: File): Parsed {
         val frames = mutableListOf<Frame>()
         class RawPos(val upUs: Long, val unixMs: Long, val lat: Double, val lon: Double, val src: String)
         val raw = mutableListOf<RawPos>()
@@ -294,6 +343,42 @@ object LogTools {
             w.write("  </trkseg></trk>\n</gpx>\n")
         }
         return p.track.size
+    }
+
+    /** CSV: one row per frame, with where the receiver was when it heard it. Returns the row count. */
+    fun toCsv(src: File, dst: File): Int {
+        val p = parse(src)
+        dst.bufferedWriter().use { w ->
+            w.write("time_utc,unix_us,type,station_id,station_type,src_mac,lat,lon,speed_kmh,heading_deg," +
+                    "rssi_dbm,secured,denm_cause,denm_subcause,spat_phase,rx_lat,rx_lon,length\n")
+            p.frames.forEachIndexed { i, f ->
+                val t = p.frameTimesUs[i]
+                val rx = p.receiverPos(i)
+                val cells = listOf(
+                    if (hasUnixTime(t)) isoTime(t) else "",
+                    t.toString(),
+                    f.msgType.short,
+                    f.stationId?.toString() ?: "",
+                    f.stationType?.toString() ?: "",
+                    f.srcMac ?: "",
+                    f.latLon?.let { "%.7f".format(Locale.ROOT, it.first) } ?: "",
+                    f.latLon?.let { "%.7f".format(Locale.ROOT, it.second) } ?: "",
+                    f.speedMps?.let { "%.1f".format(Locale.ROOT, it * 3.6) } ?: "",
+                    f.headingDeg?.let { "%.1f".format(Locale.ROOT, it) } ?: "",
+                    f.rssi?.toString() ?: "",
+                    f.secured?.toString() ?: "",
+                    f.denmCause?.causeCode?.toString() ?: "",
+                    f.denmCause?.subCauseCode?.toString() ?: "",
+                    f.spatPhase?.name ?: "",
+                    rx?.let { "%.7f".format(Locale.ROOT, it.lat) } ?: "",
+                    rx?.let { "%.7f".format(Locale.ROOT, it.lon) } ?: "",
+                    f.len.toString(),
+                )
+                w.write(cells.joinToString(","))
+                w.write("\n")
+            }
+        }
+        return p.frames.size
     }
 
     /** KML: route, coverage cells coloured by signal, transmitters (reported and estimated). */

@@ -564,6 +564,17 @@
             android:orientation="vertical">
 
             <ImageButton
+                android:id="@+id/fabRecord"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/rec_off"
+                app:tint="@color/status_error"
+                app:srcCompat="@drawable/ic_record"/>
+
+            <View android:layout_width="28dp" android:layout_height="1dp" android:layout_gravity="center_horizontal" android:background="?attr/colorOutlineVariant"/>
+
+            <ImageButton
                 android:id="@+id/fabLayers"
                 android:layout_width="48dp"
                 android:layout_height="48dp"

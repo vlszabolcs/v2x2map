@@ -146,6 +146,26 @@ object Prefs {
 
     fun resetClientId(ctx: Context) = prefs(ctx).edit().remove("client_id").apply()
 
+    /** Start a phone recording automatically whenever a receiver connects. */
+    fun autoRecord(ctx: Context): Boolean = prefs(ctx).getBoolean("auto_record", false)
+    fun setAutoRecord(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("auto_record", on) }
+
+    /** Nearby vehicles (CAM) as notifications: summary + heads-up alerts. */
+    fun nearbyNotify(ctx: Context): Boolean = prefs(ctx).getBoolean("nearby_notify", false)
+    fun setNearbyNotify(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("nearby_notify", on) }
+
+    /** Use the receiver's GNSS fix (when it has one) instead of the phone's GPS. */
+    fun receiverGnss(ctx: Context): Boolean = prefs(ctx).getBoolean("receiver_gnss", false)
+    fun setReceiverGnss(ctx: Context, on: Boolean) = prefs(ctx).edit { putBoolean("receiver_gnss", on) }
+
+    /** Node id of the last receiver whose logs were listed (offline access to its downloads). */
+    fun lastNode(ctx: Context): String? = prefs(ctx).getString("last_node", null)
+    fun setLastNode(ctx: Context, node: String) = prefs(ctx).edit { putString("last_node", node) }
+
+    /** The battery-optimisation hint was shown once already. */
+    fun batteryHintShown(ctx: Context): Boolean = prefs(ctx).getBoolean("battery_hint", false)
+    fun setBatteryHintShown(ctx: Context) = prefs(ctx).edit { putBoolean("battery_hint", true) }
+
     private fun prefs(ctx: Context) =
         ctx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 }

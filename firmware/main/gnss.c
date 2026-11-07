@@ -13,6 +13,7 @@
 #include "freertos/task.h"
 
 #include "clock.h"
+#include "ctrl.h"
 #include "sdlog.h"
 
 #if CONFIG_ENABLE_GNSS
@@ -41,6 +42,13 @@ static void log_pos(const char *src, int64_t up_us, double lat, double lon, floa
     else          m = snprintf(js + n, sizeof(js) - n, ",\"acc\":%.1f}", acc);
     if (m <= 0 || n + m >= (int)sizeof(js)) return;
     sdlog_write_json(js, (uint16_t)(n + m));
+    /* The receiver's own fix also goes out live, so a connected phone can
+     * use it instead of its GPS (it then stops sending POS, which keeps the
+     * module awake). Positions the client sent are not echoed back. */
+    if (!strcmp(src, "gnss")) {
+        ctrl_send_json(CTRL_CH_USB, js, (uint16_t)(n + m));
+        ctrl_send_json(CTRL_CH_BLE, js, (uint16_t)(n + m));
+    }
 }
 
 void gnss_client_position(int64_t unix_ms, double lat, double lon, float alt_m,

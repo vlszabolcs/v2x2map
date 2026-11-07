@@ -351,4 +351,133 @@
     <string name="logs_export_failed">Export failed</string>
     <string name="logs_export_done">%1$s written</string>
     <string name="detail_label_rssi">RSSI</string>
+
+    <!-- Recordings, receiver GNSS, battery -->
+    <string name="rec_failed">Could not start the recording</string>
+    <string name="rec_auto_started">Auto recording started</string>
+    <string name="rec_auto_stopped">Auto recording stopped (%1$d frames)</string>
+    <string name="rec_auto_label">Record automatically while a receiver is connected</string>
+    <string name="rec_auto_hint">Starts when the receiver connects over USB or Bluetooth and stops 2 minutes after the link is lost. Recordings include your route and can be replayed.</string>
+    <string name="recs_open">Browse recordings</string>
+    <string name="recs_title">Recordings</string>
+    <string name="recs_filter_all">All</string>
+    <string name="recs_filter_phone">Phone</string>
+    <string name="recs_filter_receiver">From receiver</string>
+    <string name="recs_empty">No recordings yet. Tap the red record button on the map or download logs from the receiver.</string>
+    <string name="recs_summary">%1$d recordings · %2$s</string>
+    <string name="recs_action_share_pcap">Share PCAP</string>
+    <string name="logs_action_csv">Export frames as CSV</string>
+    <string name="recs_delete_title">Delete recording?</string>
+    <string name="recs_delete_body">%1$s will be deleted from this phone. This cannot be undone.</string>
+    <string name="recs_delete_confirm">Delete</string>
+    <string name="recs_exporting">Exporting…</string>
+    <string name="recs_phone_title">Phone · %1$s</string>
+    <string name="recs_receiver_title">%1$s · %2$s</string>
+    <string name="recs_pcap_title">PCAP · %1$s</string>
+    <string name="recs_src_receiver">downloaded from receiver</string>
+    <string name="recs_src_phone">recorded on phone</string>
+    <string name="recs_active">● REC</string>
+    <string name="logs_delete_device_title">Delete on receiver?</string>
+    <string name="logs_delete_device_body_saved">%1$s (%2$s) will be deleted from the receiver\'s SD card. The copy on this phone stays.</string>
+    <string name="logs_delete_device_body_unsaved">%1$s (%2$s) has NOT been fully downloaded to this phone. Deleting it on the receiver loses it for good.</string>
+    <string name="receiver_section">Receiver position and background</string>
+    <string name="receiver_gnss_label">Use the receiver\'s GNSS instead of the phone\'s GPS</string>
+    <string name="receiver_gnss_hint">Only for receivers with a GNSS module. The phone stops sending its position, the receiver\'s fix drives the map, the distances and the recordings. Falls back to the phone\'s GPS while the receiver has no fix.</string>
+    <string name="battery_title">Keep running with the screen off</string>
+    <string name="battery_body">Android may pause the receiver link, GPS and the recording when the screen is off. Allow the app to ignore battery optimisation to keep them running.</string>
+    <string name="battery_allow">Allow</string>
+    <string name="battery_later">Not now</string>
+    <string name="battery_button">Turn off battery optimisation</string>
+    <string name="battery_status_ok">Battery optimisation is off: the app keeps running with the screen off.</string>
+    <string name="battery_status_restricted">Battery optimisation is on: Android may stop the receiver link with the screen off.</string>
+
+    <!-- CAM vehicle state -->
+    <string name="cam_hazard_lights">Hazard lights</string>
+    <string name="cam_indicator">Indicator</string>
+    <string name="cam_emergency_brake">EMERGENCY BRAKE</string>
+    <string name="cam_brake">Brake</string>
+    <string name="cam_gas">Throttle</string>
+    <string name="cam_reversing">Reversing</string>
+    <string name="cam_high_beam">High beam</string>
+    <string name="cam_low_beam">Low beam</string>
+    <string name="cam_fog">Fog light</string>
+    <string name="cam_cruise">Cruise control</string>
+    <string name="cam_on">on</string>
+    <string name="cam_off">off</string>
+    <string name="cam_label_its_id">ITS station</string>
+    <string name="cam_label_kind">Kind</string>
+    <string name="cam_rsu">Roadside unit</string>
+    <string name="cam_label_speed">Speed</string>
+    <string name="cam_label_direction">Direction</string>
+    <string name="cam_forward">forward</string>
+    <string name="cam_backward">backward</string>
+    <string name="cam_unavailable">unknown</string>
+    <string name="cam_label_accel">Accel.</string>
+    <string name="cam_label_brake">Brake pedal</string>
+    <string name="cam_label_gas">Gas pedal</string>
+    <string name="cam_label_emergency">Emerg. brake</string>
+    <string name="cam_label_collision">Coll. warning</string>
+    <string name="cam_label_limiter">Speed limiter</string>
+    <string name="cam_label_pedals">Pedals</string>
+    <string name="cam_not_sent">not sent by this vehicle</string>
+    <string name="cam_left">left</string>
+    <string name="cam_right">right</string>
+    <string name="cam_drl">Daytime lights</string>
+    <string name="cam_reverse_light">Reverse light</string>
+    <string name="cam_parking">Parking light</string>
+    <string name="cam_lights_last_known">(lights: last known, sent every ≥0.5 s)</string>
+    <string name="cam_label_role">Vehicle role</string>
+    <string name="cam_label_lights">Lights</string>
+    <string name="cam_not_yet">not received yet</string>
+    <string name="cam_label_yaw">Yaw rate</string>
+    <string name="cam_label_curve">Curve</string>
+    <string name="cam_straight">straight</string>
+    <string name="cam_label_steering">Steering</string>
+    <string name="cam_label_lat_accel">Lat. accel.</string>
+    <string name="cam_label_lane">Lane</string>
+    <string name="cam_off_road">off the road</string>
+    <string name="cam_hard_shoulder">hard shoulder</string>
+    <string name="cam_lane_n">lane %1$d (from inside)</string>
+    <string name="cam_label_size">Size (L×W)</string>
+    <string name="cam_label_altitude">Altitude</string>
+    <string name="cam_label_path">Path points</string>
+    <string-array name="cam_vehicle_roles">
+        <item>Default</item>
+        <item>Public transport</item>
+        <item>Special transport</item>
+        <item>Dangerous goods</item>
+        <item>Road works</item>
+        <item>Rescue</item>
+        <item>Emergency</item>
+        <item>Safety car</item>
+        <item>Agriculture</item>
+        <item>Commercial</item>
+        <item>Military</item>
+        <item>Road operator</item>
+        <item>Taxi</item>
+        <item>Reserved 13</item>
+        <item>Reserved 14</item>
+        <item>Reserved 15</item>
+    </string-array>
+    <string name="cam_lights_age">(lights: last received %1$.1f s ago)</string>
+    <string name="cam_label_raw">Raw bits</string>
+
+    <!-- Nearby vehicle notifications -->
+    <string name="near_channel_summary">Nearby vehicles</string>
+    <string name="near_channel_alert">Vehicle alerts</string>
+    <string name="near_title">%1$d vehicles nearby</string>
+    <string name="near_ahead">Ahead</string>
+    <string name="near_behind">Behind</string>
+    <string name="near_left">Left</string>
+    <string name="near_right">Right</string>
+    <string name="near_nearby">Nearby</string>
+    <string name="near_same_dir">same direction</string>
+    <string name="near_oncoming">oncoming</string>
+    <string name="near_braking">braking</string>
+    <string name="near_accelerating">accelerating</string>
+    <string name="near_alert_ebrake">EMERGENCY BRAKE ahead, %1$d m</string>
+    <string name="near_alert_brake">Vehicle ahead braking, %1$d m</string>
+    <string name="near_alert_indicator">%1$s %2$d m: %3$s</string>
+    <string name="near_setting_label">Notify about nearby vehicles (CAM)</string>
+    <string name="near_setting_hint">Shows the closest vehicle ahead and behind, relative to the phone\'s GPS and direction of travel, and pops up an alert when a vehicle ahead brakes hard or a vehicle close by starts indicating. Needs location.</string>
 </resources>

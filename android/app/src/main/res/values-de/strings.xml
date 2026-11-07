@@ -338,4 +338,133 @@
     <string name="logs_export_failed">Export fehlgeschlagen</string>
     <string name="logs_export_done">%1$s geschrieben</string>
     <string name="detail_label_rssi">RSSI</string>
+
+    <!-- Recordings, receiver GNSS, battery -->
+    <string name="rec_failed">Aufnahme konnte nicht gestartet werden</string>
+    <string name="rec_auto_started">Automatische Aufnahme gestartet</string>
+    <string name="rec_auto_stopped">Automatische Aufnahme gestoppt (%1$d Frames)</string>
+    <string name="rec_auto_label">Automatisch aufnehmen, solange ein Empfänger verbunden ist</string>
+    <string name="rec_auto_hint">Startet bei Verbindung über USB oder Bluetooth und stoppt 2 Minuten nach Verbindungsverlust. Aufnahmen enthalten die Route und lassen sich abspielen.</string>
+    <string name="recs_open">Aufnahmen durchsuchen</string>
+    <string name="recs_title">Aufnahmen</string>
+    <string name="recs_filter_all">Alle</string>
+    <string name="recs_filter_phone">Telefon</string>
+    <string name="recs_filter_receiver">Vom Empfänger</string>
+    <string name="recs_empty">Noch keine Aufnahmen. Tippe auf der Karte auf die rote Aufnahmetaste oder lade Logs vom Empfänger.</string>
+    <string name="recs_summary">%1$d Aufnahmen · %2$s</string>
+    <string name="recs_action_share_pcap">PCAP teilen</string>
+    <string name="logs_action_csv">Frames als CSV exportieren</string>
+    <string name="recs_delete_title">Aufnahme löschen?</string>
+    <string name="recs_delete_body">%1$s wird von diesem Telefon gelöscht. Das lässt sich nicht rückgängig machen.</string>
+    <string name="recs_delete_confirm">Löschen</string>
+    <string name="recs_exporting">Exportiere…</string>
+    <string name="recs_phone_title">Telefon · %1$s</string>
+    <string name="recs_receiver_title">%1$s · %2$s</string>
+    <string name="recs_pcap_title">PCAP · %1$s</string>
+    <string name="recs_src_receiver">vom Empfänger geladen</string>
+    <string name="recs_src_phone">auf dem Telefon aufgenommen</string>
+    <string name="recs_active">● REC</string>
+    <string name="logs_delete_device_title">Auf dem Empfänger löschen?</string>
+    <string name="logs_delete_device_body_saved">%1$s (%2$s) wird von der SD-Karte des Empfängers gelöscht. Die Kopie auf diesem Telefon bleibt.</string>
+    <string name="logs_delete_device_body_unsaved">%1$s (%2$s) wurde NICHT vollständig auf dieses Telefon geladen. Beim Löschen auf dem Empfänger geht es endgültig verloren.</string>
+    <string name="receiver_section">Empfängerposition und Hintergrund</string>
+    <string name="receiver_gnss_label">GNSS des Empfängers statt Telefon-GPS verwenden</string>
+    <string name="receiver_gnss_hint">Nur für Empfänger mit GNSS-Modul. Das Telefon sendet keine Position mehr, die Karte, Entfernungen und Aufnahmen nutzen die Position des Empfängers. Ohne Fix wird das Telefon-GPS verwendet.</string>
+    <string name="battery_title">Bei ausgeschaltetem Bildschirm weiterlaufen</string>
+    <string name="battery_body">Android kann Empfängerverbindung, GPS und Aufnahme bei ausgeschaltetem Bildschirm pausieren. Erlaube der App, die Akku-Optimierung zu ignorieren, damit sie weiterlaufen.</string>
+    <string name="battery_allow">Erlauben</string>
+    <string name="battery_later">Nicht jetzt</string>
+    <string name="battery_button">Akku-Optimierung ausschalten</string>
+    <string name="battery_status_ok">Akku-Optimierung ist aus: die App läuft bei ausgeschaltetem Bildschirm weiter.</string>
+    <string name="battery_status_restricted">Akku-Optimierung ist an: Android kann die Verbindung bei ausgeschaltetem Bildschirm beenden.</string>
+
+    <!-- CAM vehicle state -->
+    <string name="cam_hazard_lights">Warnblinker</string>
+    <string name="cam_indicator">Blinker</string>
+    <string name="cam_emergency_brake">NOTBREMSUNG</string>
+    <string name="cam_brake">Bremse</string>
+    <string name="cam_gas">Gas</string>
+    <string name="cam_reversing">Rückwärts</string>
+    <string name="cam_high_beam">Fernlicht</string>
+    <string name="cam_low_beam">Abblendlicht</string>
+    <string name="cam_fog">Nebelscheinwerfer</string>
+    <string name="cam_cruise">Tempomat</string>
+    <string name="cam_on">an</string>
+    <string name="cam_off">aus</string>
+    <string name="cam_label_its_id">ITS-Station</string>
+    <string name="cam_label_kind">Art</string>
+    <string name="cam_rsu">Straßenseitige Einheit</string>
+    <string name="cam_label_speed">Geschw.</string>
+    <string name="cam_label_direction">Richtung</string>
+    <string name="cam_forward">vorwärts</string>
+    <string name="cam_backward">rückwärts</string>
+    <string name="cam_unavailable">unbekannt</string>
+    <string name="cam_label_accel">Beschl.</string>
+    <string name="cam_label_brake">Bremspedal</string>
+    <string name="cam_label_gas">Gaspedal</string>
+    <string name="cam_label_emergency">Notbremse</string>
+    <string name="cam_label_collision">Kollisionsw.</string>
+    <string name="cam_label_limiter">Begrenzer</string>
+    <string name="cam_label_pedals">Pedale</string>
+    <string name="cam_not_sent">von diesem Fahrzeug nicht gesendet</string>
+    <string name="cam_left">links</string>
+    <string name="cam_right">rechts</string>
+    <string name="cam_drl">Tagfahrlicht</string>
+    <string name="cam_reverse_light">Rückfahrlicht</string>
+    <string name="cam_parking">Standlicht</string>
+    <string name="cam_lights_last_known">(Licht: zuletzt bekannt, alle ≥0,5 s)</string>
+    <string name="cam_label_role">Fahrzeugrolle</string>
+    <string name="cam_label_lights">Licht</string>
+    <string name="cam_not_yet">noch nicht empfangen</string>
+    <string name="cam_label_yaw">Gierrate</string>
+    <string name="cam_label_curve">Kurve</string>
+    <string name="cam_straight">geradeaus</string>
+    <string name="cam_label_steering">Lenkwinkel</string>
+    <string name="cam_label_lat_accel">Querbeschl.</string>
+    <string name="cam_label_lane">Fahrstreifen</string>
+    <string name="cam_off_road">neben der Fahrbahn</string>
+    <string name="cam_hard_shoulder">Standstreifen</string>
+    <string name="cam_lane_n">Fahrstreifen %1$d (von innen)</string>
+    <string name="cam_label_size">Größe (L×B)</string>
+    <string name="cam_label_altitude">Höhe</string>
+    <string name="cam_label_path">Pfadpunkte</string>
+    <string-array name="cam_vehicle_roles">
+        <item>Standard</item>
+        <item>ÖPNV</item>
+        <item>Sondertransport</item>
+        <item>Gefahrgut</item>
+        <item>Baustelle</item>
+        <item>Rettung</item>
+        <item>Einsatz</item>
+        <item>Sicherungsfahrzeug</item>
+        <item>Landwirtschaft</item>
+        <item>Gewerblich</item>
+        <item>Militär</item>
+        <item>Straßenbetreiber</item>
+        <item>Taxi</item>
+        <item>Reserviert 13</item>
+        <item>Reserviert 14</item>
+        <item>Reserviert 15</item>
+    </string-array>
+    <string name="cam_lights_age">(Licht: zuletzt vor %1$.1f s empfangen)</string>
+    <string name="cam_label_raw">Rohbits</string>
+
+    <!-- Nearby vehicle notifications -->
+    <string name="near_channel_summary">Fahrzeuge in der Nähe</string>
+    <string name="near_channel_alert">Fahrzeugwarnungen</string>
+    <string name="near_title">%1$d Fahrzeuge in der Nähe</string>
+    <string name="near_ahead">Vor dir</string>
+    <string name="near_behind">Hinter dir</string>
+    <string name="near_left">Links</string>
+    <string name="near_right">Rechts</string>
+    <string name="near_nearby">In der Nähe</string>
+    <string name="near_same_dir">gleiche Richtung</string>
+    <string name="near_oncoming">Gegenverkehr</string>
+    <string name="near_braking">bremst</string>
+    <string name="near_accelerating">beschleunigt</string>
+    <string name="near_alert_ebrake">NOTBREMSUNG vor dir, %1$d m</string>
+    <string name="near_alert_brake">Fahrzeug vor dir bremst, %1$d m</string>
+    <string name="near_alert_indicator">%1$s %2$d m: %3$s</string>
+    <string name="near_setting_label">Fahrzeuge in der Nähe melden (CAM)</string>
+    <string name="near_setting_hint">Zeigt das nächste Fahrzeug vor und hinter dir, bezogen auf GPS und Fahrtrichtung des Telefons, und warnt, wenn ein Fahrzeug vor dir stark bremst oder in der Nähe blinkt. Benötigt den Standort.</string>
 </resources>

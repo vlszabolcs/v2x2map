@@ -69,6 +69,17 @@
                 android:singleLine="true"
                 android:ellipsize="end"
                 tools:text="CAM · #4e2a91c0 · 23×"/>
+
+            <TextView
+                android:id="@+id/stationState"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="@style/TextAppearance.V2X2MAP.Caption"
+                android:textColor="?attr/colorPrimary"
+                android:singleLine="true"
+                android:ellipsize="end"
+                android:visibility="gone"
+                tools:text="◀ Index · Brake · Low beam"/>
         </LinearLayout>
 
         <LinearLayout

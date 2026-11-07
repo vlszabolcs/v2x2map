@@ -158,6 +158,7 @@ object ItsG5Decoder {
                 SpatTemParser.extractPhase(p, btpOff) else null
             val denmCause  = if (msgType == MsgType.DENM)
                 DenmParser.extractCause(p, btpOff) else null
+            val cam = if (msgType == MsgType.CAM) CamParser.parse(p, btpOff) else null
 
             return Decoded(
                 etherType   = et,
@@ -165,11 +166,12 @@ object ItsG5Decoder {
                 stationId   = stationId,
                 stationType = stationType,
                 latLon      = latLon,
-                headingDeg  = if (latLon != null && headingRaw != 0xFFFF) heading else null,
-                speedMps    = if (latLon != null) speed else null,
+                headingDeg  = cam?.headingDeg ?: if (latLon != null && headingRaw != 0xFFFF) heading else null,
+                speedMps    = cam?.speedMps ?: if (latLon != null) speed else null,
                 btpDstPort  = dstPort,
                 spatPhase   = spatPhase,
                 denmCause   = denmCause,
+                cam         = cam,
                 secured     = secured,
             )
         }
@@ -235,6 +237,7 @@ object ItsG5Decoder {
         val btpDstPort:  Int? = null,
         val spatPhase:   SpatTemParser.Phase? = null,
         val denmCause:   DenmParser.Cause? = null,
+        val cam:         CamParser.Cam? = null,
         val secured:     Boolean? = null,  // GN Basic Header NH == 2 → IEEE 1609.2
     )
 
