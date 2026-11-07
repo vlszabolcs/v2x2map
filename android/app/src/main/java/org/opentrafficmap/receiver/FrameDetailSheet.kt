@@ -88,6 +88,13 @@ object FrameDetailSheet {
             row(ctx.getString(R.string.detail_label_cause), causeStr)
         }
 
+        f.cam?.let { cam ->
+            sb.append('\n')
+            for ((label, value) in CamFormat.rows(ctx, cam)) {
+                if (label.isEmpty()) sb.append("%-14s  %s\n".format("", value)) else row(label, value)
+            }
+        }
+
         return sb.toString().trimEnd()
     }
 

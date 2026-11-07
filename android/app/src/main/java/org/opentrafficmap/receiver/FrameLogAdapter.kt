@@ -69,6 +69,7 @@ class FrameLogAdapter(
             entry.lastSeen   = clock()
             entry.lastSecured = frame.secured
             entry.lastLatLon  = frame.latLon ?: entry.lastLatLon
+            frame.cam?.let { CamFormat.remember(it) }
             entry.recentFrames.addFirst(frame)
             if (entry.recentFrames.size > FRAME_HISTORY) entry.recentFrames.removeLast()
         }
@@ -144,6 +145,10 @@ class FrameLogAdapter(
         val sid = entry.stationId?.let { "#%08x".format(it.toInt()) } ?: "—"
         val rssi = f?.rssi?.let { " · $it dBm" } ?: ""
         vh.summary.text = "${entry.msgType.short} · $sid · ${entry.frameCount}×$rssi"
+        // CAM vehicle state: indicators, pedals, lights …
+        val camState = f?.cam?.let { CamFormat.summary(ctx, it) }.orEmpty()
+        vh.state.text = camState
+        vh.state.visibility = if (camState.isEmpty()) View.GONE else View.VISIBLE
 
         // Right column: the one number that matters for this type, then distance · age
         vh.main.text = mainValueFor(entry.msgType, f)
@@ -274,6 +279,7 @@ class FrameLogAdapter(
         val icon:    ImageView = v.findViewById(R.id.stationIcon)
         val title:   TextView  = v.findViewById(R.id.stationTitle)
         val summary: TextView  = v.findViewById(R.id.stationSummary)
+        val state:   TextView  = v.findViewById(R.id.stationState)
         val main:    TextView  = v.findViewById(R.id.stationTime)
         val meta:    TextView  = v.findViewById(R.id.stationDist)
         val lock:    ImageView = v.findViewById(R.id.stationLock)

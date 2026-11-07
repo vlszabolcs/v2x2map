@@ -367,4 +367,73 @@
     <string name="battery_button">Akkumulátor-optimalizálás kikapcsolása</string>
     <string name="battery_status_ok">Az akkumulátor-optimalizálás ki van kapcsolva: az app kikapcsolt képernyővel is fut.</string>
     <string name="battery_status_restricted">Az akkumulátor-optimalizálás be van kapcsolva: az Android kikapcsolt képernyőnél leállíthatja a kapcsolatot.</string>
+
+    <!-- CAM vehicle state -->
+    <string name="cam_hazard_lights">Vészvillogó</string>
+    <string name="cam_indicator">Index</string>
+    <string name="cam_emergency_brake">VÉSZFÉKEZÉS</string>
+    <string name="cam_brake">Fék</string>
+    <string name="cam_gas">Gáz</string>
+    <string name="cam_reversing">Tolat</string>
+    <string name="cam_high_beam">Távolsági</string>
+    <string name="cam_low_beam">Tompított</string>
+    <string name="cam_fog">Ködlámpa</string>
+    <string name="cam_cruise">Tempomat</string>
+    <string name="cam_on">be</string>
+    <string name="cam_off">ki</string>
+    <string name="cam_label_its_id">ITS állomás</string>
+    <string name="cam_label_kind">Típus</string>
+    <string name="cam_rsu">Útmenti egység</string>
+    <string name="cam_label_speed">Sebesség</string>
+    <string name="cam_label_direction">Irány</string>
+    <string name="cam_forward">előre</string>
+    <string name="cam_backward">hátra</string>
+    <string name="cam_unavailable">ismeretlen</string>
+    <string name="cam_label_accel">Gyorsulás</string>
+    <string name="cam_label_brake">Fékpedál</string>
+    <string name="cam_label_gas">Gázpedál</string>
+    <string name="cam_label_emergency">Vészfék</string>
+    <string name="cam_label_collision">Ütközésjelző</string>
+    <string name="cam_label_limiter">Seb.korlátozó</string>
+    <string name="cam_label_pedals">Pedálok</string>
+    <string name="cam_not_sent">ez a jármű nem küldi</string>
+    <string name="cam_left">balra</string>
+    <string name="cam_right">jobbra</string>
+    <string name="cam_drl">Nappali fény</string>
+    <string name="cam_reverse_light">Tolatólámpa</string>
+    <string name="cam_parking">Helyzetjelző</string>
+    <string name="cam_lights_last_known">(fények: utolsó ismert, ≥0,5 s-onként jön)</string>
+    <string name="cam_label_role">Jármű szerep</string>
+    <string name="cam_label_lights">Fények</string>
+    <string name="cam_not_yet">még nem érkezett</string>
+    <string name="cam_label_yaw">Legyezési seb.</string>
+    <string name="cam_label_curve">Kanyar</string>
+    <string name="cam_straight">egyenes</string>
+    <string name="cam_label_steering">Kormányszög</string>
+    <string name="cam_label_lat_accel">Oldalgyors.</string>
+    <string name="cam_label_lane">Sáv</string>
+    <string name="cam_off_road">úton kívül</string>
+    <string name="cam_hard_shoulder">leállósáv</string>
+    <string name="cam_lane_n">%1$d. sáv (belülről)</string>
+    <string name="cam_label_size">Méret (H×Sz)</string>
+    <string name="cam_label_altitude">Magasság</string>
+    <string name="cam_label_path">Útvonalpontok</string>
+    <string-array name="cam_vehicle_roles">
+        <item>Normál</item>
+        <item>Tömegközlekedés</item>
+        <item>Különleges szállítás</item>
+        <item>Veszélyes áru</item>
+        <item>Útkarbantartás</item>
+        <item>Mentés</item>
+        <item>Megkülönböztetett</item>
+        <item>Biztosító jármű</item>
+        <item>Mezőgazdasági</item>
+        <item>Kereskedelmi</item>
+        <item>Katonai</item>
+        <item>Útkezelő</item>
+        <item>Taxi</item>
+        <item>Fenntartott 13</item>
+        <item>Fenntartott 14</item>
+        <item>Fenntartott 15</item>
+    </string-array>
 </resources>

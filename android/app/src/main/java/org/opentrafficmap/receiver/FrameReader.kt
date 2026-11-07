@@ -162,6 +162,7 @@ class FrameReader {
                 speedMps    = d.speedMps,
                 spatPhase   = d.spatPhase,
                 denmCause   = d.denmCause,
+                cam         = d.cam,
                 secured     = d.secured,
                 rssi        = rssi,
             )

@@ -390,4 +390,73 @@
     <string name="battery_button">Turn off battery optimisation</string>
     <string name="battery_status_ok">Battery optimisation is off: the app keeps running with the screen off.</string>
     <string name="battery_status_restricted">Battery optimisation is on: Android may stop the receiver link with the screen off.</string>
+
+    <!-- CAM vehicle state -->
+    <string name="cam_hazard_lights">Hazard lights</string>
+    <string name="cam_indicator">Indicator</string>
+    <string name="cam_emergency_brake">EMERGENCY BRAKE</string>
+    <string name="cam_brake">Brake</string>
+    <string name="cam_gas">Throttle</string>
+    <string name="cam_reversing">Reversing</string>
+    <string name="cam_high_beam">High beam</string>
+    <string name="cam_low_beam">Low beam</string>
+    <string name="cam_fog">Fog light</string>
+    <string name="cam_cruise">Cruise control</string>
+    <string name="cam_on">on</string>
+    <string name="cam_off">off</string>
+    <string name="cam_label_its_id">ITS station</string>
+    <string name="cam_label_kind">Kind</string>
+    <string name="cam_rsu">Roadside unit</string>
+    <string name="cam_label_speed">Speed</string>
+    <string name="cam_label_direction">Direction</string>
+    <string name="cam_forward">forward</string>
+    <string name="cam_backward">backward</string>
+    <string name="cam_unavailable">unknown</string>
+    <string name="cam_label_accel">Accel.</string>
+    <string name="cam_label_brake">Brake pedal</string>
+    <string name="cam_label_gas">Gas pedal</string>
+    <string name="cam_label_emergency">Emerg. brake</string>
+    <string name="cam_label_collision">Coll. warning</string>
+    <string name="cam_label_limiter">Speed limiter</string>
+    <string name="cam_label_pedals">Pedals</string>
+    <string name="cam_not_sent">not sent by this vehicle</string>
+    <string name="cam_left">left</string>
+    <string name="cam_right">right</string>
+    <string name="cam_drl">Daytime lights</string>
+    <string name="cam_reverse_light">Reverse light</string>
+    <string name="cam_parking">Parking light</string>
+    <string name="cam_lights_last_known">(lights: last known, sent every ≥0.5 s)</string>
+    <string name="cam_label_role">Vehicle role</string>
+    <string name="cam_label_lights">Lights</string>
+    <string name="cam_not_yet">not received yet</string>
+    <string name="cam_label_yaw">Yaw rate</string>
+    <string name="cam_label_curve">Curve</string>
+    <string name="cam_straight">straight</string>
+    <string name="cam_label_steering">Steering</string>
+    <string name="cam_label_lat_accel">Lat. accel.</string>
+    <string name="cam_label_lane">Lane</string>
+    <string name="cam_off_road">off the road</string>
+    <string name="cam_hard_shoulder">hard shoulder</string>
+    <string name="cam_lane_n">lane %1$d (from inside)</string>
+    <string name="cam_label_size">Size (L×W)</string>
+    <string name="cam_label_altitude">Altitude</string>
+    <string name="cam_label_path">Path points</string>
+    <string-array name="cam_vehicle_roles">
+        <item>Default</item>
+        <item>Public transport</item>
+        <item>Special transport</item>
+        <item>Dangerous goods</item>
+        <item>Road works</item>
+        <item>Rescue</item>
+        <item>Emergency</item>
+        <item>Safety car</item>
+        <item>Agriculture</item>
+        <item>Commercial</item>
+        <item>Military</item>
+        <item>Road operator</item>
+        <item>Taxi</item>
+        <item>Reserved 13</item>
+        <item>Reserved 14</item>
+        <item>Reserved 15</item>
+    </string-array>
 </resources>

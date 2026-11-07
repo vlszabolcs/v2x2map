@@ -377,4 +377,73 @@
     <string name="battery_button">Akku-Optimierung ausschalten</string>
     <string name="battery_status_ok">Akku-Optimierung ist aus: die App läuft bei ausgeschaltetem Bildschirm weiter.</string>
     <string name="battery_status_restricted">Akku-Optimierung ist an: Android kann die Verbindung bei ausgeschaltetem Bildschirm beenden.</string>
+
+    <!-- CAM vehicle state -->
+    <string name="cam_hazard_lights">Warnblinker</string>
+    <string name="cam_indicator">Blinker</string>
+    <string name="cam_emergency_brake">NOTBREMSUNG</string>
+    <string name="cam_brake">Bremse</string>
+    <string name="cam_gas">Gas</string>
+    <string name="cam_reversing">Rückwärts</string>
+    <string name="cam_high_beam">Fernlicht</string>
+    <string name="cam_low_beam">Abblendlicht</string>
+    <string name="cam_fog">Nebelscheinwerfer</string>
+    <string name="cam_cruise">Tempomat</string>
+    <string name="cam_on">an</string>
+    <string name="cam_off">aus</string>
+    <string name="cam_label_its_id">ITS-Station</string>
+    <string name="cam_label_kind">Art</string>
+    <string name="cam_rsu">Straßenseitige Einheit</string>
+    <string name="cam_label_speed">Geschw.</string>
+    <string name="cam_label_direction">Richtung</string>
+    <string name="cam_forward">vorwärts</string>
+    <string name="cam_backward">rückwärts</string>
+    <string name="cam_unavailable">unbekannt</string>
+    <string name="cam_label_accel">Beschl.</string>
+    <string name="cam_label_brake">Bremspedal</string>
+    <string name="cam_label_gas">Gaspedal</string>
+    <string name="cam_label_emergency">Notbremse</string>
+    <string name="cam_label_collision">Kollisionsw.</string>
+    <string name="cam_label_limiter">Begrenzer</string>
+    <string name="cam_label_pedals">Pedale</string>
+    <string name="cam_not_sent">von diesem Fahrzeug nicht gesendet</string>
+    <string name="cam_left">links</string>
+    <string name="cam_right">rechts</string>
+    <string name="cam_drl">Tagfahrlicht</string>
+    <string name="cam_reverse_light">Rückfahrlicht</string>
+    <string name="cam_parking">Standlicht</string>
+    <string name="cam_lights_last_known">(Licht: zuletzt bekannt, alle ≥0,5 s)</string>
+    <string name="cam_label_role">Fahrzeugrolle</string>
+    <string name="cam_label_lights">Licht</string>
+    <string name="cam_not_yet">noch nicht empfangen</string>
+    <string name="cam_label_yaw">Gierrate</string>
+    <string name="cam_label_curve">Kurve</string>
+    <string name="cam_straight">geradeaus</string>
+    <string name="cam_label_steering">Lenkwinkel</string>
+    <string name="cam_label_lat_accel">Querbeschl.</string>
+    <string name="cam_label_lane">Fahrstreifen</string>
+    <string name="cam_off_road">neben der Fahrbahn</string>
+    <string name="cam_hard_shoulder">Standstreifen</string>
+    <string name="cam_lane_n">Fahrstreifen %1$d (von innen)</string>
+    <string name="cam_label_size">Größe (L×B)</string>
+    <string name="cam_label_altitude">Höhe</string>
+    <string name="cam_label_path">Pfadpunkte</string>
+    <string-array name="cam_vehicle_roles">
+        <item>Standard</item>
+        <item>ÖPNV</item>
+        <item>Sondertransport</item>
+        <item>Gefahrgut</item>
+        <item>Baustelle</item>
+        <item>Rettung</item>
+        <item>Einsatz</item>
+        <item>Sicherungsfahrzeug</item>
+        <item>Landwirtschaft</item>
+        <item>Gewerblich</item>
+        <item>Militär</item>
+        <item>Straßenbetreiber</item>
+        <item>Taxi</item>
+        <item>Reserviert 13</item>
+        <item>Reserviert 14</item>
+        <item>Reserviert 15</item>
+    </string-array>
 </resources>
