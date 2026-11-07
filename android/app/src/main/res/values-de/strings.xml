@@ -338,4 +338,43 @@
     <string name="logs_export_failed">Export fehlgeschlagen</string>
     <string name="logs_export_done">%1$s geschrieben</string>
     <string name="detail_label_rssi">RSSI</string>
+
+    <!-- Recordings, receiver GNSS, battery -->
+    <string name="rec_failed">Aufnahme konnte nicht gestartet werden</string>
+    <string name="rec_auto_started">Automatische Aufnahme gestartet</string>
+    <string name="rec_auto_stopped">Automatische Aufnahme gestoppt (%1$d Frames)</string>
+    <string name="rec_auto_label">Automatisch aufnehmen, solange ein Empfänger verbunden ist</string>
+    <string name="rec_auto_hint">Startet bei Verbindung über USB oder Bluetooth und stoppt 2 Minuten nach Verbindungsverlust. Aufnahmen enthalten die Route und lassen sich abspielen.</string>
+    <string name="recs_open">Aufnahmen durchsuchen</string>
+    <string name="recs_title">Aufnahmen</string>
+    <string name="recs_filter_all">Alle</string>
+    <string name="recs_filter_phone">Telefon</string>
+    <string name="recs_filter_receiver">Vom Empfänger</string>
+    <string name="recs_empty">Noch keine Aufnahmen. Tippe auf der Karte auf die rote Aufnahmetaste oder lade Logs vom Empfänger.</string>
+    <string name="recs_summary">%1$d Aufnahmen · %2$s</string>
+    <string name="recs_action_share_pcap">PCAP teilen</string>
+    <string name="logs_action_csv">Frames als CSV exportieren</string>
+    <string name="recs_delete_title">Aufnahme löschen?</string>
+    <string name="recs_delete_body">%1$s wird von diesem Telefon gelöscht. Das lässt sich nicht rückgängig machen.</string>
+    <string name="recs_delete_confirm">Löschen</string>
+    <string name="recs_exporting">Exportiere…</string>
+    <string name="recs_phone_title">Telefon · %1$s</string>
+    <string name="recs_receiver_title">%1$s · %2$s</string>
+    <string name="recs_pcap_title">PCAP · %1$s</string>
+    <string name="recs_src_receiver">vom Empfänger geladen</string>
+    <string name="recs_src_phone">auf dem Telefon aufgenommen</string>
+    <string name="recs_active">● REC</string>
+    <string name="logs_delete_device_title">Auf dem Empfänger löschen?</string>
+    <string name="logs_delete_device_body_saved">%1$s (%2$s) wird von der SD-Karte des Empfängers gelöscht. Die Kopie auf diesem Telefon bleibt.</string>
+    <string name="logs_delete_device_body_unsaved">%1$s (%2$s) wurde NICHT vollständig auf dieses Telefon geladen. Beim Löschen auf dem Empfänger geht es endgültig verloren.</string>
+    <string name="receiver_section">Empfängerposition und Hintergrund</string>
+    <string name="receiver_gnss_label">GNSS des Empfängers statt Telefon-GPS verwenden</string>
+    <string name="receiver_gnss_hint">Nur für Empfänger mit GNSS-Modul. Das Telefon sendet keine Position mehr, die Karte, Entfernungen und Aufnahmen nutzen die Position des Empfängers. Ohne Fix wird das Telefon-GPS verwendet.</string>
+    <string name="battery_title">Bei ausgeschaltetem Bildschirm weiterlaufen</string>
+    <string name="battery_body">Android kann Empfängerverbindung, GPS und Aufnahme bei ausgeschaltetem Bildschirm pausieren. Erlaube der App, die Akku-Optimierung zu ignorieren, damit sie weiterlaufen.</string>
+    <string name="battery_allow">Erlauben</string>
+    <string name="battery_later">Nicht jetzt</string>
+    <string name="battery_button">Akku-Optimierung ausschalten</string>
+    <string name="battery_status_ok">Akku-Optimierung ist aus: die App läuft bei ausgeschaltetem Bildschirm weiter.</string>
+    <string name="battery_status_restricted">Akku-Optimierung ist an: Android kann die Verbindung bei ausgeschaltetem Bildschirm beenden.</string>
 </resources>

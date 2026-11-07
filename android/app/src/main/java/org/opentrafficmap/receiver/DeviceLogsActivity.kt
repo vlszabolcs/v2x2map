@@ -62,6 +62,8 @@ class DeviceLogsActivity : AppCompatActivity() {
         }
         binding.list.layoutManager = LinearLayoutManager(this)
         binding.list.adapter = adapter
+        // Offline: show what was downloaded from the last receiver
+        Prefs.lastNode(this)?.let { node = it }
         DeviceLink.addJsonListener(onJson)
         DeviceLink.addChunkListener(onChunk)
         loadLocal()
@@ -90,7 +92,9 @@ class DeviceLogsActivity : AppCompatActivity() {
     private val onJson: (JSONObject) -> Unit = { o ->
         when (o.optString("t")) {
             "status" -> {
-                node = o.optString("node", node).ifEmpty { node }
+                val n = o.optString("node", node).ifEmpty { node }
+                if (n != node) { node = n; rows.clear() }
+                Prefs.setLastNode(this, node)
                 loadLocal()
             }
             "loglist" -> applyList(o)
@@ -129,7 +133,7 @@ class DeviceLogsActivity : AppCompatActivity() {
 
     // ── local files ───────────────────────────────────────────────────────
 
-    private fun dir(): File = File(getExternalFilesDir("logs") ?: filesDir, node).apply { mkdirs() }
+    private fun dir(): File = Recordings.nodeDir(this, node)
     private fun localFile(id: Long) = File(dir(), "%08d.its".format(Locale.ROOT, id))
 
     private fun loadLocal() {
@@ -155,15 +159,42 @@ class DeviceLogsActivity : AppCompatActivity() {
             actions += getString(R.string.logs_action_pcap) to { exportPcap(r) }
             actions += getString(R.string.logs_action_gpx) to { export(r, "gpx", "application/gpx+xml") { src, dst -> LogTools.toGpx(src, dst) } }
             actions += getString(R.string.logs_action_kml) to { export(r, "kml", "application/vnd.google-earth.kml+xml") { src, dst -> LogTools.toKml(src, dst) } }
+            actions += getString(R.string.logs_action_csv) to { export(r, "csv", "text/csv") { src, dst -> LogTools.toCsv(src, dst) } }
             actions += getString(R.string.logs_action_share) to { share(localFile(r.id), "application/octet-stream") }
         }
         if (r.deviceSize >= 0)
-            actions += getString(R.string.logs_action_delete_device) to { DeviceLink.send("LOG_DEL:${r.id}"); Unit }
+            actions += getString(R.string.logs_action_delete_device) to { confirmDeleteOnDevice(r) }
         if (r.localSize > 0)
-            actions += getString(R.string.logs_action_delete_local) to { localFile(r.id).delete(); loadLocal() }
+            actions += getString(R.string.logs_action_delete_local) to { confirmDeleteLocal(r) }
         MaterialAlertDialogBuilder(this)
             .setTitle(getString(R.string.logs_file_title, r.id))
             .setItems(actions.map { it.first }.toTypedArray()) { _, i -> actions[i].second() }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    /** Deleting on the receiver cannot be undone: always ask, and warn louder
+     *  when the phone has no complete copy. */
+    private fun confirmDeleteOnDevice(r: Row) {
+        val complete = r.localSize > 0 && r.localSize >= r.deviceSize
+        val title = getString(R.string.logs_file_title, r.id)
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.logs_delete_device_title)
+            .setMessage(getString(
+                if (complete) R.string.logs_delete_device_body_saved else R.string.logs_delete_device_body_unsaved,
+                title, human(r.deviceSize)))
+            .setPositiveButton(R.string.recs_delete_confirm) { _, _ ->
+                if (!DeviceLink.send("LOG_DEL:${r.id}")) toast(getString(R.string.logs_not_connected))
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun confirmDeleteLocal(r: Row) {
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.recs_delete_title)
+            .setMessage(getString(R.string.recs_delete_body, getString(R.string.logs_file_title, r.id)))
+            .setPositiveButton(R.string.recs_delete_confirm) { _, _ -> localFile(r.id).delete(); loadLocal() }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
     }
@@ -195,7 +226,7 @@ class DeviceLogsActivity : AppCompatActivity() {
 
     private fun exportPcap(r: Row) {
         val src = localFile(r.id)
-        val dst = File(dir(), "%08d.pcap".format(Locale.ROOT, r.id))
+        val dst = File(Recordings.exportDir(this), "%s-%08d.pcap".format(Locale.ROOT, node, r.id))
         Thread {
             val n = try { LogTools.toPcap(src, dst) } catch (e: Exception) { -1 }
             main.post {
@@ -208,7 +239,7 @@ class DeviceLogsActivity : AppCompatActivity() {
     /** GPX / KML export in the background, then the share sheet. */
     private fun export(r: Row, ext: String, mime: String, write: (File, File) -> Int) {
         val src = localFile(r.id)
-        val dst = File(dir(), "%08d.%s".format(Locale.ROOT, r.id, ext))
+        val dst = File(Recordings.exportDir(this), "%s-%08d.%s".format(Locale.ROOT, node, r.id, ext))
         Thread {
             val ok = try { write(src, dst); true } catch (e: Exception) { false }
             main.post {

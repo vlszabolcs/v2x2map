@@ -90,6 +90,17 @@ class SettingsActivity : AppCompatActivity() {
             renderRecordingState()
         }
 
+        binding.btnRecordings.setOnClickListener {
+            startActivity(Intent(this, RecordingsActivity::class.java))
+        }
+        binding.swAutoRecord.isChecked = Prefs.autoRecord(this)
+        binding.swAutoRecord.setOnCheckedChangeListener { _, c -> Prefs.setAutoRecord(this, c) }
+
+        // --- Receiver GNSS / background -------------------------------------
+        binding.swReceiverGnss.isChecked = Prefs.receiverGnss(this)
+        binding.swReceiverGnss.setOnCheckedChangeListener { _, c -> Prefs.setReceiverGnss(this, c) }
+        binding.btnBattery.setOnClickListener { BatteryHelper.request(this) }
+
         // --- Marker / path TTL ----------------------------------------------
         binding.edMarkerTtl.setText(Prefs.markerTtlMinutes(this).toString())
 
@@ -188,6 +199,17 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    override fun onResume() {
+        super.onResume()
+        renderBatteryState()
+    }
+
+    private fun renderBatteryState() {
+        val exempt = BatteryHelper.isExempt(this)
+        binding.batteryStatus.text = getString(if (exempt) R.string.battery_status_ok else R.string.battery_status_restricted)
+        binding.btnBattery.visibility = if (exempt) android.view.View.GONE else android.view.View.VISIBLE
+    }
 
     private fun renderRecordingState() {
         val rec = SettingsBus.recorder()

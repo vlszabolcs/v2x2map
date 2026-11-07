@@ -170,6 +170,53 @@
                 android:layout_marginTop="6dp"
                 android:text="@string/rec_off"/>
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRecordings"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/recs_open"/>
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/swAutoRecord"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/rec_auto_label"/>
+
+            <TextView
+                style="@style/Section.Hint"
+                android:text="@string/rec_auto_hint"/>
+
+            <!-- Receiver position / background -->
+            <TextView
+                style="@style/Section.Header"
+                android:text="@string/receiver_section"/>
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/swReceiverGnss"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/receiver_gnss_label"/>
+
+            <TextView
+                style="@style/Section.Hint"
+                android:text="@string/receiver_gnss_hint"/>
+
+            <TextView
+                android:id="@+id/batteryStatus"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textSize="13sp"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnBattery"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/battery_button"/>
+
             <!-- Map -->
             <TextView
                 style="@style/Section.Header"

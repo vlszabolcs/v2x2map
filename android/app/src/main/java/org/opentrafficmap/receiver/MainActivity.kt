@@ -71,7 +71,6 @@ class MainActivity : AppCompatActivity() {
     private var usbInfo: String? = null
     private var btState = BluetoothController.State.IDLE
     private var btInfo: String? = null
-    private var recStartMs = 0L
     private var lastPosSentMs = 0L
     private var pillCompact = false
     private lateinit var replay: ReplayController
@@ -108,32 +107,88 @@ class MainActivity : AppCompatActivity() {
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) { centreOnMyLocation(); startLocationUpdates() }
+        if (granted) {
+            centreOnMyLocation(); startLocationUpdates()
+            // Upgrade the running service to the location type (screen-off GPS)
+            if (ReceiverForegroundService.instance != null) startReceiverService()
+        }
         else toast(getString(R.string.loc_perm_denied))
     }
 
     private val locationCallback = object : LocationCallback() {
         override fun onLocationResult(result: LocationResult) {
             val loc = result.lastLocation ?: return
-            lastSpeedMps = if (loc.hasSpeed()) loc.speed else 0f
-            lastLocation = loc
-            // The phone is the receiver's position source while connected
+            // The receiver's GNSS wins while it delivers fixes (setting)
+            if (receiverFixFresh()) return
+            // The phone is the receiver's position source while connected,
+            // unless the receiver should use its own GNSS module
             val now = System.currentTimeMillis()
-            if (DeviceLink.connected && now - lastPosSentMs >= 1000) {
+            val useReceiverGnss = Prefs.receiverGnss(this@MainActivity) && receiverHasGnss
+            if (DeviceLink.connected && !useReceiverGnss && now - lastPosSentMs >= 1000) {
                 lastPosSentMs = now
                 DeviceLink.sendAll(DeviceLink.positionCommand(loc))
             }
-            if (followEnabled) followLocation(loc)
-            if (ownTrackEnabled && ::binding.isInitialized)
-                runOnUiThread { addOwnTrackPoint(GeoPoint(loc.latitude, loc.longitude)) }
-            if (::binding.isInitialized) {
-                adapter.userLocation = loc          // for distance column
-                runOnUiThread { updateSpeedOverlay(loc) }
-            }
-            if (compassMode && loc.hasBearing() && ::binding.isInitialized)
-                runOnUiThread { binding.map.mapOrientation = -loc.bearing }
-            updateSpatLight(loc)
+            if (recorder.isRecording) recorder.appendLocation(loc)
+            onPosition(loc)
         }
+    }
+
+    /** Own position from the phone's GPS or the receiver's GNSS. */
+    private fun onPosition(loc: Location) {
+        lastSpeedMps = if (loc.hasSpeed()) loc.speed else 0f
+        lastLocation = loc
+        if (followEnabled) followLocation(loc)
+        if (ownTrackEnabled && ::binding.isInitialized)
+            runOnUiThread { addOwnTrackPoint(GeoPoint(loc.latitude, loc.longitude)) }
+        if (::binding.isInitialized) {
+            adapter.userLocation = loc          // for distance column
+            runOnUiThread { updateSpeedOverlay(loc) }
+        }
+        if (compassMode && loc.hasBearing() && ::binding.isInitialized)
+            runOnUiThread { binding.map.mapOrientation = -loc.bearing }
+        updateSpatLight(loc)
+    }
+
+    // ------------------------------------------------- Receiver GNSS
+
+    /** The receiver reported a GNSS module (STATUS), so it can supply positions. */
+    private var receiverHasGnss = false
+    private var lastReceiverFixMs = 0L
+
+    private fun receiverFixFresh() =
+        Prefs.receiverGnss(this) && System.currentTimeMillis() - lastReceiverFixMs < RECEIVER_FIX_FRESH_MS
+
+    private val onDeviceJson: (org.json.JSONObject) -> Unit = { o ->
+        when (o.optString("t")) {
+            "status" -> {
+                receiverHasGnss = o.optJSONObject("gnss")?.optBoolean("on", false) == true
+                o.optString("node").takeIf { it.isNotEmpty() }?.let { Prefs.setLastNode(this, it) }
+            }
+            "pos" -> if (o.optString("src") == "gnss") onReceiverFix(o)
+        }
+    }
+
+    private fun onReceiverFix(o: org.json.JSONObject) {
+        receiverHasGnss = true
+        val lat = o.optDouble("lat", Double.NaN)
+        val lon = o.optDouble("lon", Double.NaN)
+        if (lat.isNaN() || lon.isNaN()) return
+        val unixMs = o.optLong("unix_ms").takeIf { it > 1_000_000_000_000L } ?: System.currentTimeMillis()
+        val spd = o.optDouble("spd", -1.0)
+        val hdg = o.optDouble("hdg", -1.0)
+        if (recorder.isRecording)
+            recorder.appendPosition(lat, lon, "gnss", unixMs,
+                o.optDouble("alt", Double.NaN).takeIf { !it.isNaN() },
+                spd.takeIf { it >= 0 }?.toFloat(), hdg.takeIf { it >= 0 }?.toFloat())
+        if (!Prefs.receiverGnss(this)) return
+        lastReceiverFixMs = System.currentTimeMillis()
+        val loc = Location("receiver").apply {
+            latitude = lat; longitude = lon; time = unixMs
+            if (spd >= 0) speed = spd.toFloat()
+            if (hdg >= 0) bearing = hdg.toFloat()
+            o.optDouble("hdop", Double.NaN).takeIf { !it.isNaN() }?.let { accuracy = (it * 5).toFloat() }
+        }
+        onPosition(loc)
     }
 
     // ---------------------------------------------------------------- lifecycle
@@ -215,6 +270,11 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
         binding.fabLocate.setOnClickListener { onLocateClick() }
+        binding.fabRecord.setOnClickListener { toast(toggleRecording()) }
+        binding.fabRecord.setOnLongClickListener {
+            startActivity(Intent(this, RecordingsActivity::class.java)); true
+        }
+        DeviceLink.addJsonListener(onDeviceJson)
         binding.fabLayers.setOnClickListener { showLayerPicker() }
         binding.fabCompass.setOnClickListener { toggleCompassMode() }
         setupFilterChips()
@@ -292,6 +352,7 @@ class MainActivity : AppCompatActivity() {
             getString(if (usbOn) R.string.conn_action_usb_disconnect else R.string.conn_action_usb_connect),
             getString(if (btOn)  R.string.conn_action_bt_disconnect  else R.string.conn_action_bt_connect),
             getString(R.string.logs_title),
+            getString(R.string.recs_title),
         )
         com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
             .setTitle(R.string.conn_choose_title)
@@ -299,7 +360,8 @@ class MainActivity : AppCompatActivity() {
                 when (which) {
                     0 -> toggleUsb()
                     1 -> toggleBt()
-                    else -> startActivity(Intent(this, DeviceLogsActivity::class.java))
+                    2 -> startActivity(Intent(this, DeviceLogsActivity::class.java))
+                    else -> startActivity(Intent(this, RecordingsActivity::class.java))
                 }
             }
             .setNegativeButton(android.R.string.cancel, null)
@@ -357,6 +419,7 @@ class MainActivity : AppCompatActivity() {
         binding.connPill.contentDescription =
             if (compact) getString(R.string.conn_compact_desc, shortVia, rate) else getString(R.string.conn_pill_desc)
 
+        renderRecordButton()
         binding.connTitle.text = title
         binding.connSub.text   = sub
         binding.connSub.visibility = if (sub.isEmpty()) View.GONE else View.VISIBLE
@@ -368,8 +431,7 @@ class MainActivity : AppCompatActivity() {
         }))
 
         if (::recorder.isInitialized && recorder.isRecording) {
-            if (recStartMs == 0L) recStartMs = System.currentTimeMillis()
-            val sec = (System.currentTimeMillis() - recStartMs) / 1000
+            val sec = (System.currentTimeMillis() - recorder.startedMs) / 1000
             binding.recChip.text = getString(R.string.rec_chip, "%02d:%02d".format(sec / 60, sec % 60))
             binding.recChip.visibility = View.VISIBLE
             // In the circle there is no room for the timer: a red ring instead
@@ -377,7 +439,6 @@ class MainActivity : AppCompatActivity() {
                 ContextCompat.getColor(this, R.color.status_error)
             else MaterialColors.getColor(binding.connPill, com.google.android.material.R.attr.colorOutlineVariant)
         } else {
-            recStartMs = 0L
             binding.recChip.visibility = View.GONE
             binding.connPill.strokeColor = if (pillCompact)
                 (ContextCompat.getColor(this, R.color.status_ok) and 0x00FFFFFF) or 0x8C000000.toInt()
@@ -412,6 +473,8 @@ class MainActivity : AppCompatActivity() {
         SettingsBus.liveRecorder = null
         SettingsBus.liveBtController = null
         LogReplay.listener = null
+        DeviceLink.removeJsonListener(onDeviceJson)
+        mainHandler.removeCallbacks(autoStopRunnable)
         if (::replay.isInitialized) replay.stop()
         DeviceLink.usbSender = null
         DeviceLink.bleSender = null
@@ -608,7 +671,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Ask once to exempt the app from battery optimisation, so Android does not
+     *  stop the receiver link and the recording with the screen off. */
+    private fun maybeAskBatteryExemption() {
+        if (Prefs.batteryHintShown(this) || BatteryHelper.isExempt(this)) return
+        Prefs.setBatteryHintShown(this)
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.battery_title)
+            .setMessage(R.string.battery_body)
+            .setPositiveButton(R.string.battery_allow) { _, _ -> BatteryHelper.request(this) }
+            .setNegativeButton(R.string.battery_later, null)
+            .show()
+    }
+
     private fun startReceiverService() {
+        maybeAskBatteryExemption()
         val intent = Intent(this, ReceiverForegroundService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(intent)
         else startService(intent)
@@ -634,11 +711,13 @@ class MainActivity : AppCompatActivity() {
             DeviceLink.usbSender = { cmd -> usb?.writeLine(cmd) ?: false }
             if (!wasConnected) {
                 DeviceLink.usbSender?.invoke(DeviceLink.timeCommand())
+                DeviceLink.usbSender?.invoke("STATUS")
                 ensureLocation()
             }
         } else {
             DeviceLink.usbSender = null
         }
+        onLinkChanged()
         renderConnPill()
     }
 
@@ -674,10 +753,14 @@ class MainActivity : AppCompatActivity() {
         btInfo  = info
         if (state == BluetoothController.State.CONNECTED) {
             DeviceLink.bleSender = { cmd -> bt?.sendCommand(cmd) ?: false }
-            if (!wasConnected) ensureLocation()
+            if (!wasConnected) {
+                DeviceLink.bleSender?.invoke("STATUS")
+                ensureLocation()
+            }
         } else {
             DeviceLink.bleSender = null
         }
+        onLinkChanged()
         renderConnPill()
     }
 
@@ -735,14 +818,52 @@ class MainActivity : AppCompatActivity() {
 
     // -------------------------------------------------------- Recording
 
-    private fun toggleRecording(): String = if (recorder.isRecording) {
-        recStartMs = 0L
-        val stopped = recorder.stop()
-        getString(R.string.rec_stopped, recorder.frameCount, stopped?.absolutePath ?: "?")
-    } else {
-        val f = recorder.start()
-        recStartMs = System.currentTimeMillis()
-        if (f != null) getString(R.string.rec_started, f.absolutePath) else "recording start failed"
+    private fun toggleRecording(): String {
+        mainHandler.removeCallbacks(autoStopRunnable)
+        val msg = if (recorder.isRecording) {
+            val stopped = recorder.stop()
+            getString(R.string.rec_stopped, recorder.frameCount, stopped?.name ?: "?")
+        } else {
+            val f = recorder.start()
+            lastLocation?.let { if (it.provider != "receiver") recorder.appendLocation(it) }
+            if (f != null) getString(R.string.rec_started, f.name) else getString(R.string.rec_failed)
+        }
+        renderConnPill()
+        return msg
+    }
+
+    private var linkWasUp = false
+
+    /** Auto recording: start when a receiver connects, stop a while after the last link drops. */
+    private fun onLinkChanged() {
+        val up = DeviceLink.connected
+        if (up == linkWasUp) return
+        linkWasUp = up
+        if (up) {
+            mainHandler.removeCallbacks(autoStopRunnable)
+            if (Prefs.autoRecord(this) && !recorder.isRecording && !(::replay.isInitialized && replay.active)) {
+                val f = recorder.start(auto = true)
+                lastLocation?.let { if (it.provider != "receiver") recorder.appendLocation(it) }
+                if (f != null) toast(getString(R.string.rec_auto_started))
+            }
+        } else if (recorder.isRecording && recorder.autoStarted) {
+            mainHandler.postDelayed(autoStopRunnable, AUTO_STOP_GRACE_MS)
+        }
+    }
+
+    private val autoStopRunnable = Runnable {
+        if (!DeviceLink.connected && recorder.isRecording && recorder.autoStarted) {
+            recorder.stop()
+            toast(getString(R.string.rec_auto_stopped, recorder.frameCount))
+            renderConnPill()
+        }
+    }
+
+    private fun renderRecordButton() {
+        if (!::recorder.isInitialized) return
+        val on = recorder.isRecording
+        binding.fabRecord.setImageResource(if (on) R.drawable.ic_stop else R.drawable.ic_record)
+        binding.fabRecord.contentDescription = getString(if (on) R.string.rec_on else R.string.rec_off)
     }
 
     // ------------------------------------------------------- Map cache
@@ -947,5 +1068,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val OWN_TRACK_MAX  = 2000
         private const val LOG_REFRESH_MS = 300L  // log drain interval
+        private const val RECEIVER_FIX_FRESH_MS = 5_000L
+        private const val AUTO_STOP_GRACE_MS = 120_000L
     }
 }

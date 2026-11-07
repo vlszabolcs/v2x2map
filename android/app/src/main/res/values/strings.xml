@@ -351,4 +351,43 @@
     <string name="logs_export_failed">Export failed</string>
     <string name="logs_export_done">%1$s written</string>
     <string name="detail_label_rssi">RSSI</string>
+
+    <!-- Recordings, receiver GNSS, battery -->
+    <string name="rec_failed">Could not start the recording</string>
+    <string name="rec_auto_started">Auto recording started</string>
+    <string name="rec_auto_stopped">Auto recording stopped (%1$d frames)</string>
+    <string name="rec_auto_label">Record automatically while a receiver is connected</string>
+    <string name="rec_auto_hint">Starts when the receiver connects over USB or Bluetooth and stops 2 minutes after the link is lost. Recordings include your route and can be replayed.</string>
+    <string name="recs_open">Browse recordings</string>
+    <string name="recs_title">Recordings</string>
+    <string name="recs_filter_all">All</string>
+    <string name="recs_filter_phone">Phone</string>
+    <string name="recs_filter_receiver">From receiver</string>
+    <string name="recs_empty">No recordings yet. Tap the red record button on the map or download logs from the receiver.</string>
+    <string name="recs_summary">%1$d recordings · %2$s</string>
+    <string name="recs_action_share_pcap">Share PCAP</string>
+    <string name="logs_action_csv">Export frames as CSV</string>
+    <string name="recs_delete_title">Delete recording?</string>
+    <string name="recs_delete_body">%1$s will be deleted from this phone. This cannot be undone.</string>
+    <string name="recs_delete_confirm">Delete</string>
+    <string name="recs_exporting">Exporting…</string>
+    <string name="recs_phone_title">Phone · %1$s</string>
+    <string name="recs_receiver_title">%1$s · %2$s</string>
+    <string name="recs_pcap_title">PCAP · %1$s</string>
+    <string name="recs_src_receiver">downloaded from receiver</string>
+    <string name="recs_src_phone">recorded on phone</string>
+    <string name="recs_active">● REC</string>
+    <string name="logs_delete_device_title">Delete on receiver?</string>
+    <string name="logs_delete_device_body_saved">%1$s (%2$s) will be deleted from the receiver\'s SD card. The copy on this phone stays.</string>
+    <string name="logs_delete_device_body_unsaved">%1$s (%2$s) has NOT been fully downloaded to this phone. Deleting it on the receiver loses it for good.</string>
+    <string name="receiver_section">Receiver position and background</string>
+    <string name="receiver_gnss_label">Use the receiver\'s GNSS instead of the phone\'s GPS</string>
+    <string name="receiver_gnss_hint">Only for receivers with a GNSS module. The phone stops sending its position, the receiver\'s fix drives the map, the distances and the recordings. Falls back to the phone\'s GPS while the receiver has no fix.</string>
+    <string name="battery_title">Keep running with the screen off</string>
+    <string name="battery_body">Android may pause the receiver link, GPS and the recording when the screen is off. Allow the app to ignore battery optimisation to keep them running.</string>
+    <string name="battery_allow">Allow</string>
+    <string name="battery_later">Not now</string>
+    <string name="battery_button">Turn off battery optimisation</string>
+    <string name="battery_status_ok">Battery optimisation is off: the app keeps running with the screen off.</string>
+    <string name="battery_status_restricted">Battery optimisation is on: Android may stop the receiver link with the screen off.</string>
 </resources>

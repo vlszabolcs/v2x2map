@@ -328,4 +328,43 @@
     <string name="logs_export_failed">Az exportálás nem sikerült</string>
     <string name="logs_export_done">%1$s kész</string>
     <string name="detail_label_rssi">RSSI</string>
+
+    <!-- Recordings, receiver GNSS, battery -->
+    <string name="rec_failed">A felvétel nem indult el</string>
+    <string name="rec_auto_started">Automatikus felvétel elindult</string>
+    <string name="rec_auto_stopped">Automatikus felvétel leállt (%1$d frame)</string>
+    <string name="rec_auto_label">Automatikus felvétel, amíg vevő csatlakozik</string>
+    <string name="rec_auto_hint">USB vagy Bluetooth kapcsolódáskor indul, és 2 perccel a kapcsolat megszakadása után leáll. A felvétel az útvonalat is tartalmazza, és visszajátszható.</string>
+    <string name="recs_open">Felvételek böngészése</string>
+    <string name="recs_title">Felvételek</string>
+    <string name="recs_filter_all">Mind</string>
+    <string name="recs_filter_phone">Telefon</string>
+    <string name="recs_filter_receiver">Vevőről</string>
+    <string name="recs_empty">Még nincs felvétel. Nyomd meg a piros felvétel gombot a térképen, vagy tölts le naplót a vevőről.</string>
+    <string name="recs_summary">%1$d felvétel · %2$s</string>
+    <string name="recs_action_share_pcap">PCAP megosztása</string>
+    <string name="logs_action_csv">Frame-ek exportálása CSV-be</string>
+    <string name="recs_delete_title">Törlöd a felvételt?</string>
+    <string name="recs_delete_body">A(z) %1$s törlődik a telefonról. Ez nem vonható vissza.</string>
+    <string name="recs_delete_confirm">Törlés</string>
+    <string name="recs_exporting">Exportálás…</string>
+    <string name="recs_phone_title">Telefon · %1$s</string>
+    <string name="recs_receiver_title">%1$s · %2$s</string>
+    <string name="recs_pcap_title">PCAP · %1$s</string>
+    <string name="recs_src_receiver">vevőről letöltve</string>
+    <string name="recs_src_phone">telefonon rögzítve</string>
+    <string name="recs_active">● REC</string>
+    <string name="logs_delete_device_title">Törlöd a vevőről?</string>
+    <string name="logs_delete_device_body_saved">A(z) %1$s (%2$s) törlődik a vevő SD-kártyájáról. A telefonon lévő másolat megmarad.</string>
+    <string name="logs_delete_device_body_unsaved">A(z) %1$s (%2$s) NINCS teljesen letöltve a telefonra. Ha törlöd a vevőről, végleg elvész.</string>
+    <string name="receiver_section">Vevő pozíciója és háttérfutás</string>
+    <string name="receiver_gnss_label">A vevő GNSS-ének használata a telefon GPS-e helyett</string>
+    <string name="receiver_gnss_hint">Csak GNSS modullal szerelt vevőhöz. A telefon nem küldi többé a pozícióját, a térkép, a távolságok és a felvételek a vevő pozícióját használják. Amíg a vevőnek nincs fixe, a telefon GPS-e marad.</string>
+    <string name="battery_title">Futás kikapcsolt képernyővel</string>
+    <string name="battery_body">Az Android kikapcsolt képernyőnél leállíthatja a vevő kapcsolatát, a GPS-t és a felvételt. Engedélyezd, hogy az app kimaradjon az akkumulátor-optimalizálásból, így tovább fut.</string>
+    <string name="battery_allow">Engedélyezés</string>
+    <string name="battery_later">Most nem</string>
+    <string name="battery_button">Akkumulátor-optimalizálás kikapcsolása</string>
+    <string name="battery_status_ok">Az akkumulátor-optimalizálás ki van kapcsolva: az app kikapcsolt képernyővel is fut.</string>
+    <string name="battery_status_restricted">Az akkumulátor-optimalizálás be van kapcsolva: az Android kikapcsolt képernyőnél leállíthatja a kapcsolatot.</string>
 </resources>

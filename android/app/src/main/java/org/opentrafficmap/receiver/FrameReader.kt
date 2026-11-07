@@ -99,26 +99,8 @@ class FrameReader {
         }
     }
 
-    private fun decode(sec: Long, usec: Long, payload: ByteArray, rssi: Int?): Frame {
-        val d = ItsG5Decoder.decodeFull(payload)
-        return Frame(
-            seq         = ++seq,
-            sec         = sec,
-            usec        = usec,
-            payload     = payload,
-            etherType   = d.etherType,
-            msgType     = d.msgType,
-            stationId   = d.stationId,
-            stationType = d.stationType,
-            latLon      = d.latLon,
-            headingDeg  = d.headingDeg,
-            speedMps    = d.speedMps,
-            spatPhase   = d.spatPhase,
-            denmCause   = d.denmCause,
-            secured     = d.secured,
-            rssi        = rssi,
-        )
-    }
+    private fun decode(sec: Long, usec: Long, payload: ByteArray, rssi: Int?): Frame =
+        decodeFrame(++seq, sec, usec, payload, rssi)
 
     private fun peek(n: Int): ByteArray {
         val out = ByteArray(n)
@@ -162,5 +144,27 @@ class FrameReader {
         const val RSSI_LEN = 7
         const val MAX_PAYLOAD = 4096
         const val MAX_JSON = 4096
+
+        /** Decode a raw 802.11 frame into a [Frame] (also used for PCAP files). */
+        fun decodeFrame(seq: Long, sec: Long, usec: Long, payload: ByteArray, rssi: Int?): Frame {
+            val d = ItsG5Decoder.decodeFull(payload)
+            return Frame(
+                seq         = seq,
+                sec         = sec,
+                usec        = usec,
+                payload     = payload,
+                etherType   = d.etherType,
+                msgType     = d.msgType,
+                stationId   = d.stationId,
+                stationType = d.stationType,
+                latLon      = d.latLon,
+                headingDeg  = d.headingDeg,
+                speedMps    = d.speedMps,
+                spatPhase   = d.spatPhase,
+                denmCause   = d.denmCause,
+                secured     = d.secured,
+                rssi        = rssi,
+            )
+        }
     }
 }
